@@ -14,153 +14,27 @@ COMMANDS = \
 {
     'operations': 
     {
-        '-d, --download': 
-        {
-            'help': '''Download a folder or file from drive''',
-            'nargs': '+',
-            'default': None,
-            'type': str,
-            'required': False,
-            'metavar': 'FILES',
-            'dest': None
-        },
-        '-a, --file_status': 
-        {
-            'help': '''Shows file status''', 
-            'nargs': '+',
-            'default': None,
-            'type': str,
-            'required': False,
-            'metavar': 'FILE',
-            'dest': None
-        },
-        '-m, --move': 
-        {
-            'help': '''Move a folder in drive''',
-            # 'action': am.move,
-            'nargs': 2,
-            'default': None,
-            'type': str,
-            'required': False,
-            'metavar': 'FILE',
-            'dest': None
-        },
-        '-O, --open_in_drive':
-        {
-            'help': '''Opens a browser with the selected file or folder, root if nothing specified''',
-            'nargs': '?',
-            'default': '.',
-            'type': str,
-            'required': False,
-            'metavar': 'FILE',
-            'dest': None
-        },
-        '-s, start': 
-        {
-            'help': '''Start sync the specified file, if None, the current file is synced''',
-            'nargs': '+',
-            'default': None,
-            'type': None,
-            'required': False,
-            'metavar': '',
-            'dest': None
-        },
-        '-S, --stop': 
-        {
-            'help': '''Stop sync''',
-            'nargs': '+',
-            'default': None,
-            'type': None,
-            'required': False,
-            'metavar': '',
-            'dest': None
-        }
+        '-d, --download':  {'help': '''Download a folder or file from drive'''},
+        '-a, --file_status': { 'help': '''Shows file status'''},
+        '-m, --move': { 'help': '''Move a folder in drive'''},
+        '-O, --open_in_drive': { 'help': '''Opens a browser with the selected file or folder, root if nothing specified'''},
     },
     'sync':
     {
-        '-b, --blacklist': 
-        {
-            'help': '''Select specific files or folders to not sync (can't be enabled at the same time as whitelist)''', 
-            'nargs': '+',
-            'default': None,
-            'type': str,
-            'required': False,
-            'metavar': 'FILES',
-            'dest': None
-        },
-        '-F, --force_sync': 
-        {
-            'help': '''Forces a sync before the timing, when the command is executed, the timer resets to the settings.yaml timing''',
-            'nargs': '+',
-            'default': None,
-            'type': None,
-            'required': False,
-            'metavar': '',
-            'dest': None
-        },
-        '--get_sync_progress': 
-        {
-            'help': '''Display the sync status''',
-            'nargs': '+',
-            'default': None,
-            'type': str,
-            'required': False,
-            'metavar': '',
-            'dest': None
-        },
-        '-p, --pause_sync':
-        {
-            'help': '''Pause drive sync''',
-            'nargs': '+',
-            'default': None,
-            'type': None,
-            'required': False,
-            'metavar': '',
-            'dest': None
-        },
-        '-e, --resume_sync':
-        {
-            'help': '''Resume drive sync''',
-            'nargs': None,
-            'default': None,
-            'type': None,
-            'required': False,
-            'metavar': '',
-            'dest': None
-        },
-        '-A, --set_autostart':
-        {
-            'help': '''Set if sync will start on OS startup''',
-            'nargs': '+',
-            'default': None,
-            'type': bool,
-            'required': False,
-            'metavar': None,
-            'dest': None
-        },
-        '-d, --set_sync_delay': 
-        {
-            'help': '''If drive sync will start on OS startup''',
-            'nargs': '+',
-            'default': None,
-            'type': int,
-            'required': False,
-            'metavar': None,
-            'dest': None
-        },
-        '-w, --whitelist': 
-        {
-            'help': '''Select specific files or folders to sync (can't be enabled at the same time as blacklist)''',
-            'nargs': '+',
-            'default': None,
-            'type': str,
-            'required': False,
-            'metavar': 'FILE',
-            'dest': None
-        }
+        '-b, --blacklist': { 'help': '''Select specific files or folders to not sync (can't be enabled at the same time as whitelist)'''},
+        '-F, --force_sync': { 'help': '''Forces a sync before the timing, when the command is executed, the timer resets to the settings.yaml timing'''},
+        '--get_sync_progress': { 'help': '''Display the sync status'''},
+        '-p, --pause_sync': { 'help': '''Pause drive sync'''},
+        '-e, --resume_sync': { 'help': '''Resume drive sync'''},
+        '-d, --set_sync_delay': { 'help': '''If drive sync will start on OS startup'''},
+        '-s, start': { 'help': '''Start sync the specified file, if None, the current file is synced'''},
+        '-S, --stop': { 'help': '''Stop sync'''},
+        '-w, --whitelist': { 'help': '''Select specific files or folders to sync (can't be enabled at the same time as blacklist)'''}
     },
-    'options':
+    'configurations':
     {
-
+        '-A, --set_autostart': { 'help': '''Set if sync will start on OS startup'''},
+        '--clear-cache': {'help': '''Clears the local cache'''},
+        '-h, --help': {'help': '''Shows the help menu'''}
     }
 }
