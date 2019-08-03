@@ -1,1 +1,1 @@
-A simple DriveSync software
+A simple DriveSync software for Linux
