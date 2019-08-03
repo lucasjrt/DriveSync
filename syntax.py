@@ -9,9 +9,9 @@ class SyntaxAnalyzer:
         main_parser = argparse.ArgumentParser(prog = 'jds', description='Syncronizes a folder with a Google Drive account', epilog='Please notice that this software is still under development', add_help=False)
         subparsers = main_parser.add_subparsers(title = 'Commands', dest='command', metavar ='')
 
-        download_parser = subparsers.add_parser('download', help='Downloads a selected file from drive', add_help=False)
-        list_parser = subparsers.add_parser('list', help='Lists all files in a directory', add_help = False)
-        move_parser = subparsers.add_parser('move', help='Move a file to a directory', add_help = False)
+        download_parser = subparsers.add_parser('download', help=HELPS['download'], add_help=False)
+        list_parser = subparsers.add_parser('list', help=HELPS['list'], add_help = False)
+        move_parser = subparsers.add_parser('move', help=HELPS['move'], add_help = False)
 
         self.add_download_parser(download_parser)
         self.add_list_parsers(list_parser)
@@ -86,11 +86,13 @@ class SyntaxAnalyzer:
         options = parser.add_argument_group("JRT Drive Sync Options")
 
         options.add_argument('--clear-cache', 
-                                action = 'store_true', 
-                                dest = 'clear_cache')
+                                action = 'store_true',
+                                dest = 'clear_cache',
+                                help = HELPS['clear-cache'])
         options.add_argument('-sc, --show-cache', 
                                 action = 'store_true', 
-                                dest = 'show_cache')
+                                dest = 'show_cache',
+                                help = HELPS['show-cache'])
         options.add_argument('-h, --help', 
                                 action = 'help', 
                                 help = 'show this help message and exit')                                        

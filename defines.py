@@ -7,8 +7,12 @@ settings_file = 'settings.yaml'
 tree_cache = '.cache'
 DRIVE_DIR = None
 HELPS = \
-{
-    'list': 'List drive root or if specified, a folder'
+{   
+    'download': '''Download a folder or file from drive to local storage''',
+    'list': '''List drive root or if specified, a folder''',
+    'move': '''File between directories in drive''',
+    'clear-cache': '''Clears the local cache from drive files''',
+    'show-cache': '''Show the local cached tree from drive files'''
 }
 COMMANDS = \
 {
@@ -34,7 +38,6 @@ COMMANDS = \
     'configurations':
     {
         '-A, --set_autostart': { 'help': '''Set if sync will start on OS startup'''},
-        '--clear-cache': {'help': '''Clears the local cache'''},
         '-h, --help': {'help': '''Shows the help menu'''}
     }
 }
