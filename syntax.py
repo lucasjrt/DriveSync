@@ -1,21 +1,35 @@
-import argparse, sys
-from defines import HELPS, credentials_file, tree_cache
-from action_manager import ActionManager
+import argparse
+import sys
+from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH
 from drive_session import DriveSession
-from drive_file import DriveTree
 
 class SyntaxAnalyzer:
     def __init__(self):
-        main_parser = argparse.ArgumentParser(prog = 'jds', description='Syncronizes a folder with a Google Drive account', epilog='Please notice that this software is still under development', add_help=False)
-        subparsers = main_parser.add_subparsers(title = 'Commands', dest='command', metavar ='')
+        parser_description = 'Syncronizes a folder with a Google Drive account'
+        parser_epilog = 'Please notice that this software is still under development'
+        main_parser = argparse.ArgumentParser(prog='jds',
+                                              description=parser_description,
+                                              epilog=parser_epilog,
+                                              add_help=False)
+        subparsers = main_parser.add_subparsers(title='Commands', dest='command', metavar='')
 
-        download_parser = subparsers.add_parser('download', help=HELPS['download'], add_help=False)
-        list_parser = subparsers.add_parser('list', help=HELPS['list'], add_help = False)
-        move_parser = subparsers.add_parser('move', help=HELPS['move'], add_help = False)
+        download_parser = subparsers.add_parser('download', help=HELPS['download'][0],
+                                                add_help=False)
+        list_parser = subparsers.add_parser('list', help=HELPS['list'][0], add_help=False)
+        mkdir_parser = subparsers.add_parser('mkdir', help=HELPS['mkdir'][0], add_help=False)
+        move_parser = subparsers.add_parser('move', help=HELPS['move'][0], add_help=False)
+        rename_parser = subparsers.add_parser('rename', help=HELPS['rename'][0], add_help=False)
+        rm_parser = subparsers.add_parser('remove', help=HELPS['remove'][0], add_help=False)
+        restore_parser = subparsers.add_parser('restore', help=HELPS['restore'][0], add_help=False)
 
         self.add_download_parser(download_parser)
         self.add_list_parsers(list_parser)
         self.add_move_parsers(move_parser)
+        self.add_mkdir_parsers(mkdir_parser)
+        self.add_rename_parsers(rename_parser)
+        self.add_rm_parsers(rm_parser)
+        self.add_restore_parsers(restore_parser)
+
         self.add_options(main_parser)
 
         if len(sys.argv) == 1:
@@ -23,78 +37,112 @@ class SyntaxAnalyzer:
             return
 
         args = main_parser.parse_args()
-        session = DriveSession(credentials_file)
-        drive = session.getDrive()
-        root_id = drive.CreateFile({'id': 'root'})
-        root_id['title'] #Just to update metadata
-        am = ActionManager(drive, DriveTree(root_id['id'], drive).loadFromFile(tree_cache))
+        am = DriveSession(CREDENTIALS_FILE).get_action_manager()
 
         if args.command == 'download':
-            am.download(args.download_file[0], args.download_destination)
-        elif args.command == 'list':
-            am.list_files(args.list_file)
-        elif args.command == 'move':
+            am.download(args.download_files, destination=args.download_destination[0])
+        if args.command == 'list':
+            am.list_files(args.list_file, args.list_trash)
+        if args.command == 'mkdir':
+            am.mkdir(args.mkdir_file[0])
+        if args.command == 'move':
             am.move(args.move_origin[0], args.move_destination[0])
-        elif args.show_cache:
-            am.getTree().printTree()
-        elif args.clear_cache:
-            am.clearCache()
+        if args.command == 'rename':
+            am.rename(args.rename_file[0], args.rename_name[0])
+        if args.command == 'remove':
+            am.rm(args.rm_files, args.force_remove)
+        if args.command == 'restore':
+            am.restore(args.restore_files)
+        if args.show_cache:
+            am.get_tree().print_tree()
+        if args.clear_cache:
+            am.clear_cache()
 
     def add_download_parser(self, download_parser):
-        download_parser.add_argument('download_file',
-                                    metavar = 'FILE',
-                                    nargs = 1,
-                                    help = 'File to be downloaded')
-        download_parser.add_argument('download_destination',
-                                    const = '.',
-                                    default = '.',
-                                    metavar = 'DESTINATION',
-                                    nargs = '?',
-                                    help = 'Location to where the downloaded file will be save')
-        download_parser.add_argument('-h, --help', 
-                                    action = 'help', 
-                                    help = 'Lists the help menu')
+        download_parser.add_argument('download_files',
+                                     metavar='FILE',
+                                     nargs='+',
+                                     help='File to be downloaded')
+        download_parser.add_argument('-o',
+                                     default=DEFAULT_DOWNLOAD_PATH,
+                                     dest='download_destination',
+                                     metavar='DESTINATION',
+                                     nargs=1,
+                                     help='Location to where the downloaded file will be save')
+        download_parser.add_argument('-h', action='help', help=HELPS['help'][0])
 
     def add_list_parsers(self, list_parser):
-        list_parser.add_argument('list_file', 
-                                    const = 'root', 
-                                    metavar = 'FILE', 
-                                    nargs = '?', 
-                                    default = 'root',
-                                    help='File to be listed')
-        list_parser.add_argument('-h, --help', 
-                                    action = 'help', 
-                                    help = 'Lists the help menu')
+        group = list_parser.add_mutually_exclusive_group()
+        group.add_argument('list_file',
+                           const='root',
+                           metavar='FILE',
+                           nargs='?',
+                           default='root',
+                           help='File to be listed')
+        group.add_argument('-t',
+                           action='store_true',
+                           dest='list_trash',
+                           help=HELPS['list'][1])
+        group.add_argument('-h', action='help', help=HELPS['help'][0])
 
+    def add_mkdir_parsers(self, mkdir_parser):
+        mkdir_parser.add_argument('mkdir_file',
+                                  metavar='FILE',
+                                  nargs=1,
+                                  help='Directory path')
+        mkdir_parser.add_argument('-h', action='help', help=HELPS['help'][0])
 
     def add_move_parsers(self, move_parser):
-        move_parser.add_argument('move_origin', 
-                                    action = 'store', 
-                                    metavar = 'FILE', 
-                                    nargs = 1, 
-                                    type = str, 
-                                    help = 'The origin file')
-        move_parser.add_argument('move_destination', 
-                                    action = 'store', 
-                                    metavar = 'DESTINATION', 
-                                    nargs = 1, 
-                                    type = str, 
-                                    help = 'The destination file')
-        move_parser.add_argument('-h, --help', action = 'help', help = 'show this help message and exit')                                        
-    
+        move_parser.add_argument('move_origin',
+                                 metavar='FILE',
+                                 nargs=1,
+                                 help='The origin file')
+        move_parser.add_argument('move_destination',
+                                 metavar='DESTINATION',
+                                 nargs=1,
+                                 help='The destination file')
+        move_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+
+    def add_rename_parsers(self, rename_parser):
+        rename_parser.add_argument('rename_file',
+                                   metavar='FILE',
+                                   nargs=1,
+                                   help='File to be renamed')
+
+        rename_parser.add_argument('rename_name',
+                                   metavar='NAME',
+                                   nargs=1,
+                                   help='New name')
+        rename_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+
+    def add_rm_parsers(self, rm_parser):
+        rm_parser.add_argument('rm_files',
+                               metavar='FILE',
+                               nargs='+',
+                               help='The file to be moved to trash')
+
+        rm_parser.add_argument('-f',
+                               action='store_true',
+                               dest='force_remove',
+                               help=HELPS['remove'][1])
+        rm_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+
+    def add_restore_parsers(self, restore_parser):
+        restore_parser.add_argument('restore_files',
+                                    metavar='FILE',
+                                    nargs='+',
+                                    help='File(s) to be restored from trash')
+        restore_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+
     def add_options(self, parser):
         options = parser.add_argument_group("JRT Drive Sync Options")
 
-        options.add_argument('--clear-cache', 
-                                action = 'store_true',
-                                dest = 'clear_cache',
-                                help = HELPS['clear-cache'])
-        options.add_argument('-sc, --show-cache', 
-                                action = 'store_true', 
-                                dest = 'show_cache',
-                                help = HELPS['show-cache'])
-        options.add_argument('-h, --help', 
-                                action = 'help', 
-                                help = 'show this help message and exit')                                        
-
-        
+        options.add_argument('-cc',
+                             action='store_true',
+                             dest='clear_cache',
+                             help=HELPS['clear-cache'][0])
+        options.add_argument('-sc',
+                             action='store_true',
+                             dest='show_cache',
+                             help=HELPS['show-cache'][0])
+        options.add_argument('-h', action='help', help=HELPS['help'][0])

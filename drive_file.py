@@ -1,4 +1,6 @@
-import os, pickle
+import os
+import pickle
+from defines import TREE_CACHE
 
 class DriveFolder:
     def __init__(self, parent, id, name):
@@ -7,130 +9,146 @@ class DriveFolder:
         self.name = name
         self.children = []
         if parent:
-            self.level = parent.getLevel() + 1
+            self.level = parent.get_level() + 1
         else:
             self.level = 0
-    
-    def getParent(self):
+
+    def get_parent(self):
         return self.parent
-    
-    def getId(self):
+
+    def get_id(self):
         return self.id
-    
-    def getName(self):
+
+    def get_name(self):
         return self.name
-    
-    def getChildren(self):
+
+    def get_children(self):
         return self.children
 
-    def addChildren(self, children):
+    def add_children(self, children):
         self.children.append(children)
 
-    def removeChildren(self, children):
+    def remove_children(self, children):
         self.children.remove(children)
 
-    def getLevel(self):
+    def get_level(self):
         return self.level
+
+    def set_name(self, name):
+        self.name = name
 
 class DriveTree:
     def __init__(self, id, drive):
         self.root = DriveFolder(None, id, 'My drive')
         self.drive = drive
 
-    def getRoot(self):
+    def get_root(self):
         return self.root
 
-    def findFileInParent(self, parent, id):
-        for f in parent.getChildren():
-            if f.getId() == id:
+    def find_file_in_parent(self, parent, id):
+        for f in parent.get_children():
+            if f.get_id() == id:
                 return f
-            
+
             # ret = self.findFileInParent(f, id)
 
             # if ret:
             #     return ret
         return None
 
-    def findFile(self, id, depth=None):
-        if id == self.getRoot().getId():
-           return self.root
-        return self.findFileInParent(self.root, id)
+    def find_file(self, id):
+        if id == self.get_root().get_id():
+            return self.root
+        return self.find_file_in_parent(self.root, id)
 
-    def addFile(self, parent, id, name):
+    def add_file(self, parent, id, name):
         if not parent:
             return None
 
-        # pnode = self.findFile(parent.getId())
+        # pnode = self.findFile(parent.get_id())
 
         # if self.findFileInParent(pnode, id):
         # if self.findFileInParent(parent, id):
         #     return None
-        
-        cnode = DriveFolder(parent, id, name)
-        # pnode.addChildren(cnode)
-        parent.addChildren(cnode)
 
-    def removeFolder(self, id):
-        folder = self.findFile(id)
+        cnode = DriveFolder(parent, id, name)
+        # pnode.add_children(cnode)
+        parent.add_children(cnode)
+        return True
+
+    def remove_folder(self, id):
+        folder = self.find_file(id)
         if folder:
-            folder.getParent.removeChildren(folder)
-    
-    def loadFromFile(self, path):
-        if os.path.exists(path) and os.path.isfile(path):
-            with open(path, 'rb') as f:
+            folder.get_parent.removeChildren(folder)
+
+    def load_from_file(self):
+        if os.path.exists(TREE_CACHE) and os.path.isfile(TREE_CACHE):
+            with open(TREE_CACHE, 'rb') as f:
                 return pickle.load(f)
         return self
-                
-    def saveToFile(self, path):
-        if not os.path.exists(os.path.split(os.path.abspath(path))[0]):
-            os.makedirs(os.path.split(os.path.abspath(path))[0])
-        
-        with open(path, 'wb') as f:
+
+    def save_to_file(self):
+        if not os.path.exists(os.path.split(os.path.abspath(TREE_CACHE))[0]):
+            os.makedirs(os.path.split(os.path.abspath(TREE_CACHE))[0])
+
+        with open(TREE_CACHE, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
-    def getClosestNodeFromPath(self, path):
-        path_list = [p for p in path.split('/') if len(p) > 0 and p != 'root']
+    def get_closest_node_from_path(self, path):
+        path_list = [p for p in path.split('/') if p]
+        if path_list[0] != 'root':
+            path_list.insert(0, 'root')
+
         current_node = self.root
         depth = 0
         for path in path_list:
             last_depth = depth
-            for node in current_node.getChildren():
-                if path == node.getName():
+            for node in current_node.get_children():
+                if path == node.get_name():
                     current_node = node
                     depth += 1
                     break
             if depth == last_depth:
                 break
-        return current_node, depth == len(path_list), '/'.join(path_list[depth:])
-        
-    def loadPath(self, path):
-        closest_node, found, remaining_path = self.getClosestNodeFromPath(path)
-        if found:
-             return
-             
-        path_list = [p for p in remaining_path.split('/') if len(p) > 0 and p != 'root']
+        return current_node, '/'.join(path_list[depth:])
 
-        for path in path_list:
-                last = closest_node
-                file_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false" % closest_node.getId()}).GetList()
+    def get_node_from_path(self, path):
+        closest_node, remaining_path = self.get_closest_node_from_path(path)
+        if remaining_path:
+            path_list = [p for p in remaining_path.split('/') if p]
+            if path_list[0] != 'root':
+                path_list.insert(0, 'root')
+
+            next_node = closest_node
+            for p in path_list:
+                file_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
+                                                      % closest_node.get_id()}).GetList()
                 for file1 in file_list:
-                    if not self.findFileInParent(closest_node, file1['id']):
-                        self.addFile(closest_node, file1['id'], file1['title'])
-                    if file1['title'] == path:
-                        closest_node = self.findFileInParent(closest_node, file1['id'])
-                        break
-                if last == closest_node:
+                    if not self.find_file_in_parent(closest_node, file1['id']):
+                        self.add_file(closest_node, file1['id'], file1['title'])
+                    if file1['title'] == p:
+                        next_node = self.find_file_in_parent(closest_node, file1['id'])
+                if next_node == closest_node and p != 'root':
                     return None
-        
+                closest_node = next_node
+
+            if not closest_node.get_children():
+                children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
+                                                          % closest_node.get_id()}).GetList()
+                for child in children_list:
+                    self.add_file(closest_node, child['id'], child['title'])
+
+        self.save_to_file()
         return closest_node
 
-    def printFolder(self, folder):
-        depth = folder.getLevel()
-        if folder != self.root:
-            print('|', end = '')
-        print(2 * depth * '-', folder.getName(), '\tid:', folder.getId(), sep = '')
-        for child in folder.getChildren():
-            self.printFolder(child)
+    def print_folder(self, folder):
+        depth = folder.get_level()
+        # if folder != self.root:
+        #     print('|', end='')
+        prefix = depth * ('  |') + '--'
+        print(prefix, folder.get_name(), '\tid:', folder.get_id(), sep='')
+        for child in folder.get_children():
+            self.print_folder(child)
 
-    def printTree(self):
-        self.printFolder(self.root)
+    def print_tree(self):
+        self.print_folder(self.root)
