@@ -1,6 +1,6 @@
 import argparse
 import sys
-from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH
+from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH, DEFAULT_DRIVE_SYNC_DIRECTORY
 from drive_session import DriveSession
 
 class SyntaxAnalyzer:
@@ -22,6 +22,9 @@ class SyntaxAnalyzer:
         rm_parser = subparsers.add_parser('remove', help=HELPS['remove'][0], add_help=False)
         restore_parser = subparsers.add_parser('restore', help=HELPS['restore'][0], add_help=False)
 
+        start_parser = subparsers.add_parser('start', help=HELPS['start'][0], add_help=False)
+        subparsers.add_parser('stop', help=HELPS['stop'][0])
+
         self.add_download_parser(download_parser)
         self.add_list_parsers(list_parser)
         self.add_move_parsers(move_parser)
@@ -30,6 +33,8 @@ class SyntaxAnalyzer:
         self.add_rm_parsers(rm_parser)
         self.add_restore_parsers(restore_parser)
 
+        self.add_start_parsers(start_parser)
+
         self.add_options(main_parser)
 
         if len(sys.argv) == 1:
@@ -37,22 +42,33 @@ class SyntaxAnalyzer:
             return
 
         args = main_parser.parse_args()
-        am = DriveSession(CREDENTIALS_FILE).get_action_manager()
+        session = DriveSession(CREDENTIALS_FILE)
+        am = session.get_action_manager()
+        sync_controller = session.get_sync_controller()
 
+        #Operations
         if args.command == 'download':
             am.download(args.download_files, destination=args.download_destination[0])
-        if args.command == 'list':
+        elif args.command == 'list':
             am.list_files(args.list_file, args.list_trash)
-        if args.command == 'mkdir':
+        elif args.command == 'mkdir':
             am.mkdir(args.mkdir_file[0])
-        if args.command == 'move':
+        elif args.command == 'move':
             am.move(args.move_origin[0], args.move_destination[0])
-        if args.command == 'rename':
+        elif args.command == 'rename':
             am.rename(args.rename_file[0], args.rename_name[0])
-        if args.command == 'remove':
+        elif args.command == 'remove':
             am.rm(args.rm_files, args.force_remove)
-        if args.command == 'restore':
+        elif args.command == 'restore':
             am.restore(args.restore_files)
+
+        #Sync
+        elif args.command == 'start':
+            sync_controller.start(args.start_target)
+        elif args.command == 'stop':
+            sync_controller.stop()
+
+        #Options
         if args.show_cache:
             am.get_tree().print_tree()
         if args.clear_cache:
@@ -75,9 +91,9 @@ class SyntaxAnalyzer:
         group = list_parser.add_mutually_exclusive_group()
         group.add_argument('list_file',
                            const='root',
+                           default='root',
                            metavar='FILE',
                            nargs='?',
-                           default='root',
                            help='File to be listed')
         group.add_argument('-t',
                            action='store_true',
@@ -133,6 +149,18 @@ class SyntaxAnalyzer:
                                     nargs='+',
                                     help='File(s) to be restored from trash')
         restore_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+
+############################################Sync options############################################
+
+    def add_start_parsers(self, start_parser):
+        start_parser.add_argument('-t',
+                                  default=DEFAULT_DRIVE_SYNC_DIRECTORY,
+                                  dest='start_target',
+                                  metavar='TARGET',
+                                  nargs='?',
+                                  help='The target folder to synchronize with drive (Default:' +
+                                  DEFAULT_DRIVE_SYNC_DIRECTORY + ')')
+        start_parser.add_argument('-h', action='help', help=HELPS['help'][0])
 
     def add_options(self, parser):
         options = parser.add_argument_group("JRT Drive Sync Options")

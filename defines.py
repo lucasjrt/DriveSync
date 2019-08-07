@@ -2,12 +2,15 @@ import os
 import sys
 
 APP_PATH = os.path.abspath(os.path.dirname(os.path.join(sys.argv[0])))
+CLIENT_SECRET_FILE = APP_PATH + '/client_secrets.json'
+CREDENTIALS_FILE = APP_PATH + '/credentials.json'
+DEFAULT_DRIVE_SYNC_DIRECTORY = APP_PATH + '/drive_sync/'
 DEFAULT_DOWNLOAD_PATH = os.path.join(os.environ['HOME'], 'Drive_downloads')
-CREDENTIALS_FILE = 'credentials.json'
-CLIENT_SECRET_FILE = 'client_secrets.json'
-SETTINGS_FILE = 'settings.yaml'
-TREE_CACHE = '.cache'
-DRIVE_DIR = None
+LOG_FILE = APP_PATH + '/sync.log'
+PID_FILE = APP_PATH + '/.jrt_drive_sync.pid'
+SETTINGS_FILE = APP_PATH + '/settings.yaml'
+SYNC_APPLICATION = APP_PATH + '/jrt_drive_sync.py'
+TREE_CACHE = APP_PATH + '/.cache'
 HELPS = \
 {
     #Operations
@@ -25,6 +28,11 @@ HELPS = \
         '''Move a drive file to trash (see [%(prog)s rm -h] for extra information)''',
         '''Delete the file permanently without moving to trash'''
     ],
+
+    #Synchronizer
+    'start': ['''Starts the process that will keep the selected folder \
+                 synchronized with Google Drive folder'''],
+    'stop': ['''Stops syncronizing the drive'''],
 
     #Options
     'clear-cache': ['''Clear the local cache from drive files'''],
@@ -66,4 +74,14 @@ COMMANDS = \
         '-A, --set_autostart': {'help': '''Set if sync will start on OS startup'''},
         '-h, --help': {'help': '''Shows the help menu'''}
     }
+}
+
+DEFAULT_SETTINGS = \
+{
+    'delay-time': {'days': 0, 'hours': 0, 'minutes': 10, 'seconds': 0},
+    'blacklist-enabled': False,
+    'whitelist-enabled': False,
+    'blacklist-files': [],
+    'whitelist-files': [],
+    'drive-sync-directory': DEFAULT_DRIVE_SYNC_DIRECTORY
 }
