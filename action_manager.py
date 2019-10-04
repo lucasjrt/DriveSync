@@ -4,16 +4,12 @@ from apiclient.http import MediaIoBaseDownload
 from defines import TREE_CACHE, DEFAULT_DOWNLOAD_PATH
 from mime_names import TYPES, CONVERTS
 
-#TODO: separate basic operations from sync operations
-# (basic operations: create, delete, rename, etc.)
 class ActionManager:
+    # Local action manager (remote action manager is located at sync_controller.py)
     def __init__(self, drive, service, drive_tree):
         self.drive = drive
         self.service = service
         self.drive_tree = drive_tree
-
-    def blacklist(self):
-        print('Blacklisting')
 
     def clear_cache(self):
         if os.path.exists(TREE_CACHE):
@@ -72,12 +68,6 @@ class ActionManager:
     def file_status(self):
         pass
 
-    def force_sync(self):
-        pass
-
-    def get_sync_progress(self):
-        pass
-
     def list_files(self, path, list_trash):
         files = []
         if list_trash:
@@ -125,9 +115,6 @@ class ActionManager:
     def open_in_drive(self):
         pass
 
-    def pause_sync(self):
-        pass
-
     def rename(self, file_path, new_name):
         print('Renaming', file_path, 'to', new_name)
         node = self.drive_tree.get_node_from_path(file_path)
@@ -143,9 +130,6 @@ class ActionManager:
         print(file1['title'])
         node.set_name(new_name)
         print('Renamed')
-
-    def resume_sync(self):
-        print('Resuming sync')
 
     def rm(self, file_list, force_remove):
         print('Removing files:', ', '.join(file_list))
@@ -173,21 +157,6 @@ class ActionManager:
                     found = True
             if not found:
                 print(title, 'not found')
-
-    def set_autostart(self):
-        pass
-
-    def set_sync_delay(self):
-        pass
-
-    def start(self):
-        pass
-
-    def stop(self):
-        pass
-
-    def whitelist(self):
-        pass
 
     def get_tree(self):
         return self.drive_tree

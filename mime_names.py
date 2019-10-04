@@ -2,7 +2,7 @@ TYPES = \
 {
     'doc': 'application/vnd.google-apps.document',
     'folder': 'application/vnd.google-apps.folder',
-    'spreadsheet': 'application/vnd.google-apps.spreadsheet', #excel
+    'spreadsheet': 'application/vnd.google-apps.spreadsheet',
     'txt': 'text/plain'
 }
 

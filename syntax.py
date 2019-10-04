@@ -41,6 +41,7 @@ class SyntaxAnalyzer:
             print(main_parser.format_help())
             return
 
+
         args = main_parser.parse_args()
         session = DriveSession(CREDENTIALS_FILE)
         am = session.get_action_manager()

@@ -1,17 +1,14 @@
 import os
 import signal
-import sys
+import time
 from fcntl import flock, LOCK_EX, LOCK_NB
 from ruamel_yaml import YAML
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from defines import PID_FILE, SETTINGS_FILE, DEFAULT_SETTINGS
+from utils import log
 from sig_handlers import SignalHandler
-
-def log(*message):
-    print(*message)
-    sys.stdout.flush()
 
 class Synchronizer:
     def __init__(self):
@@ -28,7 +25,7 @@ class Synchronizer:
         elif self.whitelist_enabled:
             self.whitelist_files = settings['whitelist-files']
         self.drive_sync_directory = settings['drive-sync-directory']
-        log(self.drive_sync_directory)
+        log("sync directory:", self.drive_sync_directory)
         if not os.path.exists(self.drive_sync_directory):
             os.makedirs(self.drive_sync_directory)
 
@@ -38,6 +35,9 @@ class Synchronizer:
         self.observer = Observer()
         self.observer.schedule(FileChangedHandler(), self.drive_sync_directory, recursive=True)
         self.observer.start()
+
+        while True:
+            signal.pause()
 
     def load_settings(self):
         yaml = YAML()

@@ -1,4 +1,4 @@
-from jrt_drive_sync import log
+from utils import log
 
 class SignalHandler():
     def __init__(self, instance):
