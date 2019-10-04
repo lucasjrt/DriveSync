@@ -1,6 +1,5 @@
 import os
 import signal
-import time
 from fcntl import flock, LOCK_EX, LOCK_NB
 from ruamel_yaml import YAML
 from watchdog.observers import Observer
