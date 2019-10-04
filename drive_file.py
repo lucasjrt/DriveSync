@@ -1,13 +1,15 @@
 import os
 import pickle
+from mime_names import TYPES
 from defines import TREE_CACHE
 
 class DriveFolder:
-    def __init__(self, parent, id, name):
+    def __init__(self, parent, id, name, mime):
         self.parent = parent
         self.id = id
         self.name = name
         self.children = []
+        self.mime = mime
         if parent:
             self.level = parent.get_level() + 1
         else:
@@ -18,6 +20,9 @@ class DriveFolder:
 
     def get_id(self):
         return self.id
+
+    def get_mime(self):
+        return self.mime
 
     def get_name(self):
         return self.name
@@ -39,7 +44,7 @@ class DriveFolder:
 
 class DriveTree:
     def __init__(self, id, drive):
-        self.root = DriveFolder(None, id, 'My drive')
+        self.root = DriveFolder(None, id, 'My drive', TYPES['folder'])
         self.drive = drive
 
     def get_root(self):
@@ -61,7 +66,7 @@ class DriveTree:
             return self.root
         return self.find_file_in_parent(self.root, id)
 
-    def add_file(self, parent, id, name):
+    def add_file(self, parent, id, name, mime):
         if not parent:
             return None
 
@@ -71,7 +76,7 @@ class DriveTree:
         # if self.findFileInParent(parent, id):
         #     return None
 
-        cnode = DriveFolder(parent, id, name)
+        cnode = DriveFolder(parent, id, name, mime)
         # pnode.add_children(cnode)
         parent.add_children(cnode)
         return True
@@ -93,6 +98,7 @@ class DriveTree:
 
         with open(TREE_CACHE, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+            f.flush()
 
     def get_closest_node_from_path(self, path):
         path_list = [p for p in path.split('/') if p]
@@ -125,7 +131,7 @@ class DriveTree:
                                                       % closest_node.get_id()}).GetList()
                 for file1 in file_list:
                     if not self.find_file_in_parent(closest_node, file1['id']):
-                        self.add_file(closest_node, file1['id'], file1['title'])
+                        self.add_file(closest_node, file1['id'], file1['title'], file1['mimeType'])
                     if file1['title'] == p:
                         next_node = self.find_file_in_parent(closest_node, file1['id'])
                 if next_node == closest_node and p != 'root':
@@ -136,7 +142,7 @@ class DriveTree:
                 children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
                                                           % closest_node.get_id()}).GetList()
                 for child in children_list:
-                    self.add_file(closest_node, child['id'], child['title'])
+                    self.add_file(closest_node, child['id'], child['title'], child['mimeType'])
 
         self.save_to_file()
         return closest_node

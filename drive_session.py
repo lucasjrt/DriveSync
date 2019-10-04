@@ -3,13 +3,12 @@ from pydrive.drive import GoogleDrive
 
 from action_manager import ActionManager
 from drive_file import DriveTree
-from sync_controller import SyncController
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 class DriveSession:
 
-    def __init__(self, credentials_file):
+    def __init__(self, credentials_file, is_sync=False):
         auth_token = GoogleAuth()
         auth_token.LoadCredentialsFile(credentials_file)
         if auth_token.credentials is None:
@@ -24,9 +23,9 @@ class DriveSession:
         self.service = auth_token.service
 
         root_id = self.drive.GetAbout()['rootFolderId']
-        self.action_manager = ActionManager(self.drive, self.service,
-                                            DriveTree(root_id, self.drive).load_from_file())
-        self.sync_controller = SyncController()
+        if not is_sync:
+            self.action_manager = ActionManager(self.drive, self.service,
+                                                DriveTree(root_id, self.drive).load_from_file())
 
     def get_drive(self):
         return self.drive
@@ -36,6 +35,3 @@ class DriveSession:
 
     def get_action_manager(self):
         return self.action_manager
-
-    def get_sync_controller(self):
-        return self.sync_controller

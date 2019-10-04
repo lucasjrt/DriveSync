@@ -2,6 +2,7 @@ import argparse
 import sys
 from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH, DEFAULT_DRIVE_SYNC_DIRECTORY
 from drive_session import DriveSession
+from sync_controller import SyncController
 
 class SyntaxAnalyzer:
     def __init__(self):
@@ -13,6 +14,7 @@ class SyntaxAnalyzer:
                                               add_help=False)
         subparsers = main_parser.add_subparsers(title='Commands', dest='command', metavar='')
 
+        # Basic ops
         download_parser = subparsers.add_parser('download', help=HELPS['download'][0],
                                                 add_help=False)
         list_parser = subparsers.add_parser('list', help=HELPS['list'][0], add_help=False)
@@ -22,6 +24,7 @@ class SyntaxAnalyzer:
         rm_parser = subparsers.add_parser('remove', help=HELPS['remove'][0], add_help=False)
         restore_parser = subparsers.add_parser('restore', help=HELPS['restore'][0], add_help=False)
 
+        # Sync ops
         start_parser = subparsers.add_parser('start', help=HELPS['start'][0], add_help=False)
         subparsers.add_parser('stop', help=HELPS['stop'][0])
 
@@ -43,9 +46,11 @@ class SyntaxAnalyzer:
 
 
         args = main_parser.parse_args()
-        session = DriveSession(CREDENTIALS_FILE)
-        am = session.get_action_manager()
-        sync_controller = session.get_sync_controller()
+        # Just need drive session if performing any task
+        if args.command not in ['start', 'stop', '-cc', '-sc']:
+            session = DriveSession(CREDENTIALS_FILE)
+            am = session.get_action_manager()
+        sync_controller = SyncController()
 
         #Operations
         if args.command == 'download':
@@ -74,6 +79,8 @@ class SyntaxAnalyzer:
             am.get_tree().print_tree()
         if args.clear_cache:
             am.clear_cache()
+        if args.sync_cache:
+            am.sync_cache()
 
     def add_download_parser(self, download_parser):
         download_parser.add_argument('download_files',
@@ -174,4 +181,8 @@ class SyntaxAnalyzer:
                              action='store_true',
                              dest='show_cache',
                              help=HELPS['show-cache'][0])
+        options.add_argument('-syc',
+                             action='store_true',
+                             dest='sync_cache',
+                             help='sync local cache')
         options.add_argument('-h', action='help', help=HELPS['help'][0])

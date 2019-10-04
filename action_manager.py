@@ -1,8 +1,12 @@
 import io
 import os
+import pickle
+from threading import Thread, Lock
 from apiclient.http import MediaIoBaseDownload
 from defines import TREE_CACHE, DEFAULT_DOWNLOAD_PATH
 from mime_names import TYPES, CONVERTS
+
+rps = 0 # requests per second
 
 class ActionManager:
     # Local action manager (remote action manager is located at sync_controller.py)
@@ -166,3 +170,86 @@ class ActionManager:
 
     def get_service(self):
         return self.get_service
+
+    def sync_cache(self):
+        mutex = Lock()
+        requestmutex = Lock()
+        print("syncing cache")
+        # for each node check if it exists on drive, and if so
+        # check if there's any new child
+        files = self.drive.ListFile({'q': "'root' in parents and trashed = false"
+                                    }).GetList()
+        file_names = [file1['title'] for file1 in files]
+        children = self.drive_tree.get_root().get_children()
+        children_names = [node.get_name() for node in self.drive_tree.get_root().get_children()]
+
+        #first remove
+        for child in children:
+            if child.get_name() not in file_names:
+                self.drive_tree.get_root().remove_children(child)
+
+        #then add
+        for file1 in files:
+            if file1['title'] not in children_names:
+                self.drive_tree.add_file(self.drive_tree.get_root(), file1['id'],
+                                         file1['title'], file1['mimeType'])
+
+        self.drive_tree.save_to_file()
+
+        #repeat for children recursively
+        for child in children:
+            t = Thread(target=self._sync_cache_children, args=(child, mutex, requestmutex))
+            t.start()
+#            self._sync_cache_children(child, mutex)
+
+    def _sync_cache_children(self, node, mutex, rqmutex):
+        global rps
+        #print("Requiring files from", node.get_name())
+        mutex.acquire()
+        if rps >= 4:
+            mutex.release()
+            rqmutex.acquire()
+            files = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
+                                              % node.get_id()}).GetList()
+            rqmutex.release()
+        else:
+            rps += 1
+            mutex.release()
+            files = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
+                                              % node.get_id()}).GetList()
+            mutex.acquire()
+            rps -= 1
+            mutex.release()
+        print(rps, "Recieved", node.get_name())
+        file_names = [file1['title'] for file1 in files]
+        children = node.get_children()
+        children_names = [child_node.get_name() for child_node in node.get_children()]
+
+        mutex.acquire()
+        #first remove
+        for child in children:
+            if child.get_name() not in file_names:
+                print("removing", child.get_name())
+                node.remove_children(child)
+
+        #then add
+        for file1 in files:
+            if file1['title'] not in children_names:
+                print("adding", file1['title'])
+                self.drive_tree.add_file(node, file1['id'], file1['title'], file1['mimeType'])
+
+        self.drive_tree.save_to_file()
+        mutex.release()
+        #repeat for children recursively
+        for child in children:
+            if child.get_mime() == TYPES['folder']:
+                t = Thread(target=self._sync_cache_children, args=(child, mutex, rqmutex))
+                t.start()
+
+    def get_files_to_file(self):
+        ''' stupid function that is still being thought about '''
+        files = self.drive.ListFile({'q': '"root" in parents and trashed = false'}).GetList()
+        with open("Files.dat", "wb") as f:
+            pickle.dump(files, f, pickle.HIGHEST_PROTOCOL)
+            # files = pickle.load(f)
+            # print(files)
