@@ -8,7 +8,7 @@ DEFAULT_DRIVE_SYNC_DIRECTORY = APP_PATH + '/drive_sync/'
 DEFAULT_DOWNLOAD_PATH = os.path.join(os.environ['HOME'], 'Drive_downloads')
 LOG_FILE = APP_PATH + '/sync.log'
 PID_FILE = APP_PATH + '/.jrt_drive_sync.pid'
-SETTINGS_FILE = APP_PATH + '/settings.yaml'
+DEFAULT_SETTINGS_FILE = APP_PATH + '/config.yaml'
 SYNC_APPLICATION = APP_PATH + '/jrt_drive_sync.py'
 TREE_CACHE = APP_PATH + '/.cache'
 HELPS = \
@@ -83,5 +83,6 @@ DEFAULT_SETTINGS = \
     'whitelist-enabled': False,
     'blacklist-files': [],
     'whitelist-files': [],
-    'drive-sync-directory': DEFAULT_DRIVE_SYNC_DIRECTORY
+    'drive-sync-directory': DEFAULT_DRIVE_SYNC_DIRECTORY,
+    'client_config_file': 'client_secrets.json'
 }
