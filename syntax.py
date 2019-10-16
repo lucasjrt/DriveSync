@@ -1,8 +1,13 @@
 import argparse
+import os
 import sys
-from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH, DEFAULT_DRIVE_SYNC_DIRECTORY
+
+from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH, \
+                    DEFAULT_DRIVE_SYNC_DIRECTORY, TREE_CACHE
 from drive_session import DriveSession
 from sync_controller import SyncController
+
+from action_manager import ActionManager
 
 class SyntaxAnalyzer:
     def __init__(self):
@@ -47,14 +52,19 @@ class SyntaxAnalyzer:
 
         args = main_parser.parse_args()
         # Just need drive session if performing any task
-        if args.command not in ['start', 'stop', '-cc', '-sc']:
+        if args.command is not None or args.sync_cache:
             session = DriveSession(CREDENTIALS_FILE)
-            am = session.get_action_manager()
+            print('Drive session started')
+            am = ActionManager(session)
+        else:
+            am = ActionManager(None)
+
         sync_controller = SyncController()
 
         #Operations
         if args.command == 'download':
-            am.download(args.download_files, destination=args.download_destination[0])
+            for file1 in args.download_files:
+                am.download(file1, destination=args.download_destination)
         elif args.command == 'list':
             am.list_files(args.list_file, args.list_trash)
         elif args.command == 'mkdir':
@@ -76,7 +86,10 @@ class SyntaxAnalyzer:
 
         #Options
         if args.show_cache:
-            am.get_tree().print_tree()
+            if os.path.exists(TREE_CACHE):
+                am.get_tree().print_tree()
+            else:
+                print('Empty cache')
         if args.clear_cache:
             am.clear_cache()
         if args.sync_cache:
@@ -91,7 +104,7 @@ class SyntaxAnalyzer:
                                      default=DEFAULT_DOWNLOAD_PATH,
                                      dest='download_destination',
                                      metavar='DESTINATION',
-                                     nargs=1,
+                                     type=str,
                                      help='Location to where the downloaded file will be save')
         download_parser.add_argument('-h', action='help', help=HELPS['help'][0])
 

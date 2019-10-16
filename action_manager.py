@@ -1,16 +1,26 @@
 import io
 import os
 import pickle
+
 from apiclient.http import MediaIoBaseDownload
 from defines import TREE_CACHE, DEFAULT_DOWNLOAD_PATH
 from mime_names import TYPES, CONVERTS
 
+from drive_file import DriveTree
+
 class ActionManager:
     # Local action manager (remote action manager is located at sync_controller.py)
-    def __init__(self, drive, service, drive_tree):
-        self.drive = drive
-        self.service = service
-        self.drive_tree = drive_tree
+    def __init__(self, drive_session):
+        if drive_session is None:
+            self.drive_tree = DriveTree(None).load_from_file()
+            return
+        self.drive_session = drive_session
+        self.drive = drive_session.drive
+        self.service = drive_session.service
+        self.drive_tree = DriveTree(drive_session.drive)
+        print('Loading cache', end=' ')
+        self.drive_tree = self.drive_tree.load_from_file()
+        print('done')
 
     def clear_cache(self):
         if os.path.exists(TREE_CACHE):
@@ -19,16 +29,8 @@ class ActionManager:
         else:
             print('There is no cache to delete')
 
-    #does not work for folder with multiple files with same name
-    # TODO: change this to decide if desired to download files recursively
-    def download(self, path_list, destination=DEFAULT_DOWNLOAD_PATH):#, recursive=True):
-        #if recursive:
-        for path in path_list:
-            self._download(path, destination)
-        #else:
-
-
-    def _download(self, path, destination):
+    # does not work for folder with multiple files with same name (which is allowed in drive)
+    def download(self, path, destination=DEFAULT_DOWNLOAD_PATH, recursive=True):
         node = self.drive_tree.get_node_from_path(path)
         if not node:
             print(path, 'not found')
@@ -46,11 +48,12 @@ class ActionManager:
             folder_path = destination + '/' + file1['title']
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
-            children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
-                                                      % file1['id']}).GetList()
-            for child in children_list:
-                self._download(path + '/' + child['title'], folder_path)
-            return
+            if recursive:
+                children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
+                                                          % file1['id']}).GetList()
+                for child in children_list:
+                    self.download(path + '/' + child['title'], folder_path)
+                return
 
         if file1['mimeType'] in CONVERTS:
             file1['title'] = os.path.splitext(file1['title'])[0] + \
@@ -72,6 +75,26 @@ class ActionManager:
 
     def file_status(self):
         pass
+
+    def get_drive(self):
+        return self.drive
+
+    def get_files_to_file(self):
+        ''' stupid function that is still being thought about '''
+        files = self.drive.ListFile({'q': '"root" in parents and trashed = false'}).GetList()
+        with open("Files.dat", "wb") as f:
+            pickle.dump(files, f, pickle.HIGHEST_PROTOCOL)
+            # files = pickle.load(f)
+            # print(files)
+
+    def get_service(self):
+        return self.get_service
+
+    def get_storage(self):
+        return self.drive_session.get_storage()
+
+    def get_tree(self):
+        return self.drive_tree
 
     def list_files(self, path, list_trash):
         files = []
@@ -136,7 +159,7 @@ class ActionManager:
         node.set_name(new_name)
         print('Renamed')
 
-    def rm(self, file_list, force_remove):
+    def rm(self, file_list, force_remove=False):
         print('Removing files:', ', '.join(file_list))
         for file_name in file_list:
             node = self.drive_tree.get_node_from_path(file_name)
@@ -163,23 +186,7 @@ class ActionManager:
             if not found:
                 print(title, 'not found')
 
-    def get_tree(self):
-        return self.drive_tree
-
-    def get_drive(self):
-        return self.drive
-
-    def get_service(self):
-        return self.get_service
-
     def sync_cache(self):
-        # self.drive_tree.sync_cache()
-        self.drive_tree.test_sync_cache()
-
-    def get_files_to_file(self):
-        ''' stupid function that is still being thought about '''
-        files = self.drive.ListFile({'q': '"root" in parents and trashed = false'}).GetList()
-        with open("Files.dat", "wb") as f:
-            pickle.dump(files, f, pickle.HIGHEST_PROTOCOL)
-            # files = pickle.load(f)
-            # print(files)
+        self.drive_tree.load_complete_tree()
+        self.drive_tree.save_to_file()
+        print('Cache synced')

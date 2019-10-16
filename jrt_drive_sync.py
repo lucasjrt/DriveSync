@@ -10,13 +10,10 @@ from drive_session import DriveSession
 from utils import log, load_settings, delay_to_seconds
 from sig_handlers import SignalHandler
 
-rps = 0 # requests per second (not actually, just limiting threads)
-
 class Synchronizer:
     def __init__(self):
-        self.drive_session = DriveSession(CREDENTIALS_FILE, is_sync=True)
-        root_id = self.drive_session.drive.GetAbout()['rootFolderId']
-        self.drive_tree = DriveTree(root_id, self.drive_session.drive)
+        self.drive_session = DriveSession(CREDENTIALS_FILE)
+        self.drive_tree = DriveTree(self.drive_session.drive)
         settings = load_settings()
         self.do_sync = True
         self.delay = delay_to_seconds(settings['delay-time'])
