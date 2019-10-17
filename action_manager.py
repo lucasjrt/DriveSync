@@ -9,6 +9,7 @@ from mime_names import TYPES, CONVERTS
 from drive_file import DriveTree
 
 class ActionManager:
+    # TODO: Implement filter to the actions
     # Local action manager (remote action manager is located at sync_controller.py)
     def __init__(self, drive_session):
         if drive_session is None:
@@ -97,6 +98,7 @@ class ActionManager:
         return self.drive_tree
 
     def list_files(self, path, list_trash):
+        print('Listing files:')
         files = []
         if list_trash:
             file_list = self.drive.ListFile({'q': "trashed = true"}).GetList()
@@ -185,6 +187,12 @@ class ActionManager:
                     found = True
             if not found:
                 print(title, 'not found')
+
+    def show_cache(self):
+        if os.path.exists(TREE_CACHE):
+            self.get_tree().print_tree()
+        else:
+            print('Empty cache')
 
     def sync_cache(self):
         self.drive_tree.load_complete_tree()

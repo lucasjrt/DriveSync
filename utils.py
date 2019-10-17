@@ -58,27 +58,25 @@ def load_settings():
             if settings['whitelist-enabled'] and settings['blacklist-enabled']:
                 log('whitelist and blacklist cannot be enabled simultaneously')
                 return None
-            if settings['whitelist-enabled']:
-                # Starting path with '/'
-                settings['whitelist-files'] = \
-                    [w.replace(w, '/' + w) for w in settings['whitelist-files'] if w[0] != '/']
+            # Paths starting and ending with '/'
+            for i, w in enumerate(settings['whitelist-files']):
+                if w[0] != '/':
+                    settings['whitelist-files'][i] = '/' + w
+                if w[-1] != '/':
+                    settings['whitelist-files'][i] = settings['whitelist-files'][i] + '/'
 
-                # Closing path with '/'
-                settings['whitelist-files'] = \
-                    [w.replace(w, w + '/') for w in settings['whitelist-files'] if w[-1] != '/']
-            elif settings['blacklist-enabled']:
-                # Starting path with '/'
-                settings['blacklist-files'] = \
-                    [w.replace(w, '/' + w) for w in settings['blacklist-files'] if w[0] != '/']
+            for i, w in enumerate(settings['blacklist-files']):
+                if w[0] != '/':
+                    settings['blacklist-files'][i] = '/' + w
+                if w[-1] != '/':
+                    settings['blacklist-files'][i] = settings[i] + '/'
 
-                # Closing path with '/'
-                settings['blacklist-files'] = \
-                    [w.replace(w, w + '/') for w in settings['blacklist-files'] if w[-1] != '/']
             return settings
 
     with open(DEFAULT_SETTINGS_FILE, 'w+') as f:
         yaml.dump(DEFAULT_SETTINGS, f)
-        return DEFAULT_SETTINGS
+
+    return DEFAULT_SETTINGS
 
 def log(*message):
     print("[", datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "]: ", *message, sep='')

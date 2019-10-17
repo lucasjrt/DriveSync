@@ -2,6 +2,7 @@ import os
 import pickle
 
 from defines import TREE_CACHE
+from utils import load_settings
 
 class DriveFolder:
     def __init__(self, parent, file_struct):
@@ -198,17 +199,33 @@ class DriveTree:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             f.flush()
 
-    # TODO: blacklist and whitelist
+    # TODO: blacklist and whitelist for non-root node children
     # whitelist and blacklist don't need to require all the files,
     # only specific files (is it worth it? don't think so. too complex query)
+    # maybe it's more efficient to remove the nodes and its children
+    # if not whitelisted or is blacklisted after its insertion
     def load_complete_tree(self):
-        print('Requesting files')
-        query = 'trashed = false'
-        remote_files = self.drive.ListFile({'q': query}).GetList()
+        settings = load_settings()
+        whitelist = blacklist = None
+        if settings['whitelist-enabled']:
+            whitelist = settings['whitelist-files']
+        elif settings['blacklist-enabled']:
+            blacklist = settings['blacklist-files']
+
+        if os.path.exists('mirror.dat'):
+            with open('mirror.dat', 'rb') as f:
+                remote_files = pickle.load(f)
+        else:
+            print('Requesting files')
+            query = 'trashed = false'
+            remote_files = self.drive.ListFile({'q': query}).GetList()
+            with open('mirror.dat', 'wb') as f:
+                pickle.dump(remote_files, f, pickle.HIGHEST_PROTOCOL)
+
         metadata = [file1 for file1 in remote_files if file1['parents']]
 
         self.root.children = []
-        stack = [] # [return]
+        stack = [] # [metadata]
         nodes = [] # [DriveFile]
         i = 0 # used to pin the node that is looking for a parent
         j = 0 # used to pin the next node that will look for the parent
@@ -255,19 +272,27 @@ class DriveTree:
                     i = j - 1
             # parent node is root
             elif metadata[i]['parents'][0]['id'] == self.root.get_id():
-                child = DriveFolder(self.root, metadata[i])
-                self.root.add_child(child)
-                # check if nodes is empty, to avoid 'out of bounds'
-                if not nodes:
-                    nodes.append(child)
-                else:
-                    insert_ordered_node(child, nodes)
-                while stack:
-                    parent = child
-                    item = stack.pop()
-                    child = DriveFolder(parent, item)
-                    parent.add_child(child)
-                    insert_ordered_node(child, nodes)
+                parent_title = ('/' + metadata[i]['title'] + '/')
+                if (whitelist and parent_title in whitelist)\
+                   or (blacklist and parent_title not in blacklist):
+                    child = DriveFolder(self.root, metadata[i])
+                    self.root.add_child(child)
+                    # check if nodes is empty, to avoid 'out of bounds'
+                    if not nodes:
+                        nodes.append(child)
+                    else:
+                        insert_ordered_node(child, nodes)
+                    while stack:
+                        item = stack.pop()
+                        parent_title = parent_title + '/' + item['title'] + '/'
+                        if blacklist and parent_title in blacklist:
+                            stack = []
+                            break
+
+                        parent = child
+                        child = DriveFolder(parent, item)
+                        parent.add_child(child)
+                        insert_ordered_node(child, nodes)
                 metadata.pop(i)
                 i = 0
             # parent object exists
@@ -287,6 +312,10 @@ class DriveTree:
                     else:
                         lower_bound = half + 1
                     half = (lower_bound + upper_bound) // 2
+                if not nodes:
+                    stack = []
+                    metadata.pop(i)
+                    continue
                 if nodes[half].get_id() != parent_id:
                     metadata.pop(i)
                     stack = []

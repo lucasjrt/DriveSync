@@ -1,13 +1,12 @@
 import argparse
-import os
 import sys
 
+from action_manager import ActionManager
+from config_manager import ConfigManager
 from defines import HELPS, CREDENTIALS_FILE, DEFAULT_DOWNLOAD_PATH, \
-                    DEFAULT_DRIVE_SYNC_DIRECTORY, TREE_CACHE
+                    DEFAULT_DRIVE_SYNC_DIRECTORY
 from drive_session import DriveSession
 from sync_controller import SyncController
-
-from action_manager import ActionManager
 
 class SyntaxAnalyzer:
     def __init__(self):
@@ -59,7 +58,9 @@ class SyntaxAnalyzer:
         else:
             am = ActionManager(None)
 
+        config_manager = ConfigManager()
         sync_controller = SyncController()
+        print('Settings loaded\n')
 
         #Operations
         if args.command == 'download':
@@ -86,14 +87,27 @@ class SyntaxAnalyzer:
 
         #Options
         if args.show_cache:
-            if os.path.exists(TREE_CACHE):
-                am.get_tree().print_tree()
-            else:
-                print('Empty cache')
+            am.show_cache()
         if args.clear_cache:
             am.clear_cache()
         if args.sync_cache:
             am.sync_cache()
+        if args.blacklist is not None:
+            if args.blacklist:
+                config_manager.set_blacklist_files(args.blacklist)
+                if not config_manager.get_blacklist_enabled():
+                    config_manager.switch_blacklist_enabled()
+            else:
+                config_manager.switch_blacklist_enabled()
+        elif args.whitelist is not None:
+            if args.whitelist:
+                config_manager.set_whitelist_files(args.whitelist)
+                if not config_manager.get_whitelist_enabled():
+                    config_manager.switch_whitelist_enabled()
+            else:
+                config_manager.switch_whitelist_enabled()
+        elif args.show_filter:
+            config_manager.show_lists_status()
 
     def add_download_parser(self, download_parser):
         download_parser.add_argument('download_files',
@@ -185,11 +199,22 @@ class SyntaxAnalyzer:
 
     def add_options(self, parser):
         options = parser.add_argument_group("JRT Drive Sync Options")
+        mutex = options.add_mutually_exclusive_group()
 
+        mutex.add_argument('-b',
+                           dest='blacklist',
+                           metavar='FILE',
+                           nargs='*',
+                           type=str,
+                           help=HELPS['blacklist'][0])
         options.add_argument('-cc',
                              action='store_true',
                              dest='clear_cache',
                              help=HELPS['clear-cache'][0])
+        options.add_argument('-sf',
+                             action='store_true',
+                             dest='show_filter',
+                             help=HELPS['show-filter'][0])
         options.add_argument('-sc',
                              action='store_true',
                              dest='show_cache',
@@ -197,5 +222,11 @@ class SyntaxAnalyzer:
         options.add_argument('-syc',
                              action='store_true',
                              dest='sync_cache',
-                             help='sync local cache')
+                             help=HELPS['sync-cache'][0])
+        mutex.add_argument('-w',
+                           dest='whitelist',
+                           metavar='FILES',
+                           nargs='*',
+                           type=str,
+                           help=HELPS['whitelist'][0])
         options.add_argument('-h', action='help', help=HELPS['help'][0])

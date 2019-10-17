@@ -36,7 +36,15 @@ HELPS = \
 
     #Options
     'clear-cache': ['''Clear the local cache from drive files'''],
+    'blacklist': ['''Enables blacklist to the given files. If no files are given, enables blacklist\
+                     and load files from the config file. (If whitelist is enabled, automatically\
+                     disables it.)'''],
     'show-cache': ['''Show the local cached tree from drive files'''],
+    'show-filter': ['''Show status from filter, either blacklist or whitelist.'''],
+    'sync-cache': ['''Load the whole file tree to the local cache'''],
+    'whitelist': ['''Enables whitelist to the given files. If no files are given, enables whitelist\
+                     and load files from the config file. (If blacklist is enabled, automatically\
+                     disables it.)'''],
     'help': ['''Show help menu''']
 }
 COMMANDS = \
