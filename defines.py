@@ -4,7 +4,7 @@ import sys
 APP_PATH = os.path.abspath(os.path.dirname(os.path.join(sys.argv[0])))
 CLIENT_SECRET_FILE = APP_PATH + '/client_secrets.json'
 CREDENTIALS_FILE = APP_PATH + '/credentials.json'
-DEFAULT_DRIVE_SYNC_DIRECTORY = APP_PATH + '/drive_sync/'
+DEFAULT_DRIVE_SYNC_DIRECTORY = os.path.join(os.environ['HOME'], 'GoogleDrive')
 DEFAULT_DOWNLOAD_PATH = os.path.join(os.environ['HOME'], 'Drive_downloads')
 LOG_FILE = APP_PATH + '/sync.log'
 PID_FILE = APP_PATH + '/.jrt_drive_sync.pid'

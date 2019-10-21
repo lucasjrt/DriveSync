@@ -14,15 +14,16 @@ class DriveSession:
             self.gauth = gauth
             print('Requesting authorization in drive')
             if gauth.credentials is None:
+                print('Requesting access permission')
                 gauth.LocalWebserverAuth()
             elif gauth.access_token_expired:
+                print('Refreshing token')
                 gauth.Refresh()
             else:
                 gauth.Authorize()
         except ServerNotFoundError:
             print('No internet connection')
             exit(-1)
-
         gauth.SaveCredentialsFile(credentials_file)
 
         self.drive = GoogleDrive(gauth)

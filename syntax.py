@@ -225,7 +225,7 @@ class SyntaxAnalyzer:
                              help=HELPS['sync-cache'][0])
         mutex.add_argument('-w',
                            dest='whitelist',
-                           metavar='FILES',
+                           metavar='FILE',
                            nargs='*',
                            type=str,
                            help=HELPS['whitelist'][0])
