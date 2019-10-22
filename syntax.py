@@ -81,7 +81,8 @@ class SyntaxAnalyzer:
 
         #Sync
         elif args.command == 'start':
-            sync_controller.start(args.start_target)
+            am.download_tree()
+            #sync_controller.start(args.start_target)
         elif args.command == 'stop':
             sync_controller.stop()
 
@@ -92,22 +93,31 @@ class SyntaxAnalyzer:
             am.clear_cache()
         if args.sync_cache:
             am.sync_cache()
-        if args.blacklist is not None:
-            if args.blacklist:
-                config_manager.set_blacklist_files(args.blacklist)
-                if not config_manager.get_blacklist_enabled():
-                    config_manager.switch_blacklist_enabled()
+        if args.add_blacklist is not None:
+            if args.add_blacklist:
+                config_manager.append_blacklist_files(args.add_blacklist)
             else:
                 config_manager.switch_blacklist_enabled()
-        elif args.whitelist is not None:
+        elif args.add_whitelist is not None:
+            if args.add_whitelist:
+                config_manager.append_whitelist_files(args.add_whitelist)
+            else:
+                config_manager.switch_whitelist_enabled()
+        elif args.remove_blacklist is not None:
+            config_manager.remove_from_blacklist(args.remove_blacklist)
+        elif args.remove_whitelist is not None:
+            config_manager.remove_from_whitelist(args.remove_whitelist)
+        elif args.set_blacklist is not None:
+            config_manager.set_blacklist_files(args.set_blacklist)
+        elif args.set_whitelist is not None:
             if args.whitelist:
-                config_manager.set_whitelist_files(args.whitelist)
+                config_manager.set_whitelist_files(args.set_whitelist)
                 if not config_manager.get_whitelist_enabled():
                     config_manager.switch_whitelist_enabled()
             else:
                 config_manager.switch_whitelist_enabled()
         elif args.show_filter:
-            config_manager.show_lists_status()
+            config_manager.show_filter_status()
 
     def add_download_parser(self, download_parser):
         download_parser.add_argument('download_files',
@@ -201,16 +211,34 @@ class SyntaxAnalyzer:
         options = parser.add_argument_group("JRT Drive Sync Options")
         mutex = options.add_mutually_exclusive_group()
 
-        mutex.add_argument('-b',
-                           dest='blacklist',
+        mutex.add_argument('-B',
+                           dest='set_blacklist',
                            metavar='FILE',
                            nargs='*',
                            type=str,
-                           help=HELPS['blacklist'][0])
+                           help=HELPS['set-blacklist'][0])
+        mutex.add_argument('-b',
+                           dest='add_blacklist',
+                           metavar='FILE',
+                           nargs='*',
+                           type=str,
+                           help=HELPS['add-blacklist'][0])
         options.add_argument('-cc',
                              action='store_true',
                              dest='clear_cache',
                              help=HELPS['clear-cache'][0])
+        mutex.add_argument('-rb',
+                           dest='remove_blacklist',
+                           metavar='FILE',
+                           nargs='+',
+                           type=str,
+                           help=HELPS['remove-blacklist'][0])
+        mutex.add_argument('-rw',
+                           dest='remove_whitelist',
+                           metavar='FILE',
+                           nargs='+',
+                           type=str,
+                           help=HELPS['remove-whitelist'][0])
         options.add_argument('-sf',
                              action='store_true',
                              dest='show_filter',
@@ -223,10 +251,16 @@ class SyntaxAnalyzer:
                              action='store_true',
                              dest='sync_cache',
                              help=HELPS['sync-cache'][0])
-        mutex.add_argument('-w',
-                           dest='whitelist',
+        mutex.add_argument('-W',
+                           dest='set_whitelist',
                            metavar='FILE',
                            nargs='*',
                            type=str,
-                           help=HELPS['whitelist'][0])
+                           help=HELPS['set-whitelist'][0])
+        mutex.add_argument('-w',
+                           dest='add_whitelist',
+                           metavar='FILE',
+                           nargs='*',
+                           type=str,
+                           help=HELPS['add-whitelist'][0])
         options.add_argument('-h', action='help', help=HELPS['help'][0])

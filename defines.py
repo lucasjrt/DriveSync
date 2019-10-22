@@ -35,16 +35,20 @@ HELPS = \
     'stop': ['''Stops syncronizing the drive'''],
 
     #Options
+    'add-blacklist': ['''Adds one or more files to the blacklist. If no files are given,\
+                      it switches blacklist on or off. (If blacklist is enabled, automatically\
+                      disables it.)'''],
+    'add-whitelist': ['''Adds one or more files to the whitelist. If no files are given,\
+                      it switches whitelist on or off. (If whitelist is enabled, automatically\
+                      disables it.)'''],
     'clear-cache': ['''Clear the local cache from drive files'''],
-    'blacklist': ['''Enables blacklist to the given files. If no files are given, enables blacklist\
-                     and load files from the config file. (If whitelist is enabled, automatically\
-                     disables it.)'''],
+    'remove-blacklist': ['''Removes the given files from blacklist.'''],
+    'remove-whitelist': ['''Removes the given files from whitelist.'''],
+    'set-blacklist': ['''Set blacklist to the given files. Clear filter if no files are given.'''],
+    'set-whitelist': ['''Set whitelist to the given files. Clear filter if no files are given.'''],
     'show-cache': ['''Show the local cached tree from drive files'''],
     'show-filter': ['''Show status from filter, either blacklist or whitelist.'''],
     'sync-cache': ['''Load the whole file tree to the local cache'''],
-    'whitelist': ['''Enables whitelist to the given files. If no files are given, enables whitelist\
-                     and load files from the config file. (If blacklist is enabled, automatically\
-                     disables it.)'''],
     'help': ['''Show help menu''']
 }
 COMMANDS = \

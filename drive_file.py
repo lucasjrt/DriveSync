@@ -2,6 +2,7 @@ import os
 import pickle
 
 from defines import TREE_CACHE
+from mime_names import TYPES
 from utils import load_settings
 
 class DriveFolder:
@@ -93,6 +94,12 @@ class DriveTree:
                     discovered.append(child)
                     q.insert(0, child)
 
+    def clear_cache(self):
+        if os.path.exists(TREE_CACHE):
+            os.remove(TREE_CACHE)
+            return True
+        return False
+
     def find_file(self, node_id):
         if node_id == self.root.get_id():
             return self.root
@@ -127,8 +134,9 @@ class DriveTree:
                 break
         return current_node, '/'.join(path_list[depth:])
 
-    def get_node_from_path(self, path, exclusive=False):
-        '''creates a broad path to reach the node'''
+    def get_node_from_path(self, path, exclusive=True):
+        '''Creates a path to reach the node adding all the "sibblings" to the cache
+        if exclusive is false'''
         closest_node, remaining_path = self.get_closest_node_from_path(path)
         if remaining_path:
             path_list = [p for p in remaining_path.split('/') if p]
@@ -140,8 +148,8 @@ class DriveTree:
                 file_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
                                                       % closest_node.get_id()}).GetList()
                 for file1 in file_list:
-                    if not self.find_file_in_parent(closest_node, file1['id'])\
-                       and not exclusive:
+                    if not exclusive\
+                       and not self.find_file_in_parent(closest_node, file1['id']):
                         self.add_file(closest_node, file1)
                     if file1['title'] == p:
                         if exclusive:
@@ -162,10 +170,16 @@ class DriveTree:
 
     def get_path_from_id(self, id):
         file1 = self.drive.CreateFile({'id': id})
+        isfolder = ''
+        if file1['mimeType'] == TYPES['folder']:
+            isfolder = '/'
+        if not file1['parents']:
+            return '?' + file1['title']
         parent = file1['parents'][0]
         if parent['isRoot']:
-            return '/' + file1['title'] + '/'
-        return self.get_path_from_id(parent['id']) + file1['title'] + '/'
+            return '/' + file1['title'] + isfolder
+
+        return self.get_path_from_id(parent['id']) + file1['title'] + isfolder
 
     def get_root(self):
         return self.root
@@ -199,7 +213,6 @@ class DriveTree:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             f.flush()
 
-    # TODO: blacklist and whitelist for non-root node children
     # whitelist and blacklist don't need to require all the files,
     # only specific files (is it worth it? don't think so. too complex query)
     # maybe it's more efficient to remove the nodes and its children
@@ -217,6 +230,7 @@ class DriveTree:
                 remote_files = pickle.load(f)
         else:
             print('Requesting files')
+            # TODO: improve query
             query = 'trashed = false'
             remote_files = self.drive.ListFile({'q': query}).GetList()
             with open('mirror.dat', 'wb') as f:
@@ -251,7 +265,7 @@ class DriveTree:
         total = len(metadata)
         while metadata or stack:
             current = len(metadata)
-            if (current % 100) == 0:
+            if (current % 200) == 0:
                 print('\rGenerating tree: %.2f%%' % (((total - current)/total) * 100), end='')
             enqueue = None
             j = 0
@@ -312,15 +326,27 @@ class DriveTree:
                     else:
                         lower_bound = half + 1
                     half = (lower_bound + upper_bound) // 2
+
                 if not nodes:
                     stack = []
                     metadata.pop(i)
+                    i = 0
                     continue
+                elif blacklist or whitelist:
+                    title = nodes[half].get_path() + metadata[i]['title'] + '/'
+                    if (blacklist and (title in blacklist))\
+                       or (whitelist and not any(elem in title for elem in whitelist)):
+                        stack = []
+                        metadata.pop(i)
+                        i = 0
+                        continue
+
                 if nodes[half].get_id() != parent_id:
                     metadata.pop(i)
                     stack = []
                     i = 0
                     continue
+
                 child = DriveFolder(nodes[half], metadata[i])
                 nodes[half].add_child(child)
                 insert_ordered_node(child, nodes)

@@ -3,13 +3,12 @@ import os
 import pickle
 
 from apiclient.http import MediaIoBaseDownload
-from defines import TREE_CACHE, DEFAULT_DOWNLOAD_PATH
+from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, DEFAULT_DOWNLOAD_PATH, TREE_CACHE
 from mime_names import TYPES, CONVERTS
 
 from drive_file import DriveTree
 
 class ActionManager:
-    # TODO: Implement filter to the actions
     # Local action manager (remote action manager is located at sync_controller.py)
     def __init__(self, drive_session):
         if drive_session is None:
@@ -19,18 +18,15 @@ class ActionManager:
         self.drive = drive_session.drive
         self.service = drive_session.service
         self.drive_tree = DriveTree(drive_session.drive)
-        print('Loading cache', end=' ')
         self.drive_tree = self.drive_tree.load_from_file()
-        print('done')
 
     def clear_cache(self):
-        if os.path.exists(TREE_CACHE):
-            os.remove(TREE_CACHE)
+        if self.drive_tree.clear_cache():
             print('Cache cleared')
         else:
-            print('There is no cache to delete')
+            print('There is no cache to clear')
 
-    # does not work for folder with multiple files with same name (which is allowed in drive)
+    # TODO: set this to allow multiple files with the same name
     def download(self, path, destination=DEFAULT_DOWNLOAD_PATH, recursive=True):
         node = self.drive_tree.get_node_from_path(path)
         if not node:
@@ -55,6 +51,7 @@ class ActionManager:
                 for child in children_list:
                     self.download(path + '/' + child['title'], folder_path)
                 return
+            return
 
         if file1['mimeType'] in CONVERTS:
             file1['title'] = os.path.splitext(file1['title'])[0] + \
@@ -73,6 +70,16 @@ class ActionManager:
             print("\rProgress %s: %3d%%." %
                   (file1['title'], int(status.progress()*100)), end='')
         print()
+
+    def download_tree(self):
+        path = DEFAULT_DRIVE_SYNC_DIRECTORY
+        if not os.path.exists(path):
+            os.mkdir(path)
+        nodes = self.drive_tree.get_root().get_children()
+        for node in nodes:
+            nodes = nodes + node.get_children()
+            self.download(node.get_path(), recursive=False)
+            nodes.remove(node)
 
     def file_status(self):
         pass
@@ -153,13 +160,11 @@ class ActionManager:
             return
 
         file1 = self.drive.CreateFile({'id': node.get_id()})
-        file1.Upload()
+        file1.FetchMetadata(fetch_all=True)
         file1['title'] = new_name
-        print(file1['title'])
         file1.Upload()
-        print(file1['title'])
         node.set_name(new_name)
-        print('Renamed')
+        self.drive_tree.save_to_file()
 
     def rm(self, file_list, force_remove=False):
         print('Removing files:', ', '.join(file_list))

@@ -6,6 +6,14 @@ from ruamel_yaml import YAML
 
 from defines import DEFAULT_SETTINGS, DEFAULT_SETTINGS_FILE
 
+def add_slashes(files):
+    for i, w in enumerate(files):
+        if w[0] != '/':
+            files[i] = '/' + files[i]
+        if w[-1] != '/':
+            files[i] = files[i] + '/'
+    return files
+
 def bytes_to_human(bytes1, binary=False):
     magnitude = 0
     name = 'B'
@@ -36,7 +44,6 @@ def bytes_to_human(bytes1, binary=False):
     if binary and magnitude > 0:
         name = name[:-1] + 'i' + name[-1]
     return ('%.2f' % bytes1) + name
-
 
 def delay_to_seconds(delay):
     total = 0
