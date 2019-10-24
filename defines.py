@@ -11,6 +11,7 @@ PID_FILE = APP_PATH + '/.jrt_drive_sync.pid'
 DEFAULT_SETTINGS_FILE = APP_PATH + '/config.yaml'
 SYNC_APPLICATION = APP_PATH + '/jrt_drive_sync.py'
 TREE_CACHE = APP_PATH + '/.cache'
+TREE_MIRROR = APP_PATH + '/.mirror'
 HELPS = \
 {
     #Operations
@@ -46,9 +47,11 @@ HELPS = \
     'remove-whitelist': ['''Removes the given files from whitelist.'''],
     'set-blacklist': ['''Set blacklist to the given files. Clear filter if no files are given.'''],
     'set-whitelist': ['''Set whitelist to the given files. Clear filter if no files are given.'''],
-    'show-cache': ['''Show the local cached tree from drive files'''],
+    'show-cache': ['''Show the local cache tree from drive files'''],
+    'show-mirror': ['''Show the local mirror tree from drive files'''],
     'show-filter': ['''Show status from filter, either blacklist or whitelist.'''],
     'sync-cache': ['''Load the whole file tree to the local cache'''],
+    'sync-mirror': ['''Load the whole file tree to the local mirror'''],
     'help': ['''Show help menu''']
 }
 COMMANDS = \

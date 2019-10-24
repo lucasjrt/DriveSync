@@ -1,7 +1,6 @@
 import os
 import pickle
 
-from defines import TREE_CACHE
 from mime_names import TYPES
 from utils import load_settings
 
@@ -59,7 +58,8 @@ class DriveFolder:
         self.name = name
 
 class DriveTree:
-    def __init__(self, drive):
+    def __init__(self, drive, save_path):
+        self.save_path = save_path
         if drive is None:
             return
         self.drive = drive
@@ -93,12 +93,6 @@ class DriveTree:
                 if child not in discovered:
                     discovered.append(child)
                     q.insert(0, child)
-
-    def clear_cache(self):
-        if os.path.exists(TREE_CACHE):
-            os.remove(TREE_CACHE)
-            return True
-        return False
 
     def find_file(self, node_id):
         if node_id == self.root.get_id():
@@ -135,7 +129,7 @@ class DriveTree:
         return current_node, '/'.join(path_list[depth:])
 
     def get_node_from_path(self, path, exclusive=True):
-        '''Creates a path to reach the node adding all the "sibblings" to the cache
+        '''Creates a path to reach the node adding all the "sibblings" to the tree
         if exclusive is false'''
         closest_node, remaining_path = self.get_closest_node_from_path(path)
         if remaining_path:
@@ -184,9 +178,12 @@ class DriveTree:
     def get_root(self):
         return self.root
 
-    def load_from_file(self):
-        if os.path.exists(TREE_CACHE) and os.path.isfile(TREE_CACHE):
-            with open(TREE_CACHE, 'rb') as f:
+    def load_from_file(self, file_path=None):
+        if not file_path:
+            file_path = self.save_path
+
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            with open(file_path, 'rb') as f:
                 return pickle.load(f)
         return self
 
@@ -205,25 +202,26 @@ class DriveTree:
         if folder:
             folder.get_parent.removeChildren(folder)
 
-    def save_to_file(self):
-        if not os.path.exists(os.path.split(os.path.abspath(TREE_CACHE))[0]):
-            os.makedirs(os.path.split(os.path.abspath(TREE_CACHE))[0])
+    def save_to_file(self, file_path=None):
+        if not file_path:
+            file_path = self.save_path
+        if not os.path.exists(os.path.split(os.path.abspath(file_path))[0]):
+            os.makedirs(os.path.split(os.path.abspath(file_path))[0])
 
-        with open(TREE_CACHE, 'wb') as f:
+        with open(file_path, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             f.flush()
 
     # whitelist and blacklist don't need to require all the files,
     # only specific files (is it worth it? don't think so. too complex query)
-    # maybe it's more efficient to remove the nodes and its children
-    # if not whitelisted or is blacklisted after its insertion
-    def load_complete_tree(self):
-        settings = load_settings()
+    def load_complete_tree(self, filter_enabled=True):
         whitelist = blacklist = None
-        if settings['whitelist-enabled']:
-            whitelist = settings['whitelist-files']
-        elif settings['blacklist-enabled']:
-            blacklist = settings['blacklist-files']
+        if filter_enabled:
+            settings = load_settings()
+            if settings['whitelist-enabled']:
+                whitelist = settings['whitelist-files']
+            elif settings['blacklist-enabled']:
+                blacklist = settings['blacklist-files']
 
         if os.path.exists('mirror.dat'):
             with open('mirror.dat', 'rb') as f:
@@ -286,9 +284,10 @@ class DriveTree:
                     i = j - 1
             # parent node is root
             elif metadata[i]['parents'][0]['id'] == self.root.get_id():
-                parent_title = ('/' + metadata[i]['title'] + '/')
-                if (whitelist and parent_title in whitelist)\
-                   or (blacklist and parent_title not in blacklist):
+                title = ('/' + metadata[i]['title'] + '/')
+                if not filter_enabled\
+                   or (whitelist and title in whitelist)\
+                   or (blacklist and title not in blacklist):
                     child = DriveFolder(self.root, metadata[i])
                     self.root.add_child(child)
                     # check if nodes is empty, to avoid 'out of bounds'
@@ -298,11 +297,10 @@ class DriveTree:
                         insert_ordered_node(child, nodes)
                     while stack:
                         item = stack.pop()
-                        parent_title = parent_title + '/' + item['title'] + '/'
-                        if blacklist and parent_title in blacklist:
+                        title = title + '/' + item['title'] + '/'
+                        if blacklist and title in blacklist:
                             stack = []
                             break
-
                         parent = child
                         child = DriveFolder(parent, item)
                         parent.add_child(child)
@@ -332,7 +330,7 @@ class DriveTree:
                     metadata.pop(i)
                     i = 0
                     continue
-                elif blacklist or whitelist:
+                elif filter_enabled:
                     title = nodes[half].get_path() + metadata[i]['title'] + '/'
                     if (blacklist and (title in blacklist))\
                        or (whitelist and not any(elem in title for elem in whitelist)):

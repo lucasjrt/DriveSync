@@ -12,19 +12,19 @@ class ActionManager:
     # Local action manager (remote action manager is located at sync_controller.py)
     def __init__(self, drive_session):
         if drive_session is None:
-            self.drive_tree = DriveTree(None).load_from_file()
+            self.drive_tree = DriveTree(None, TREE_CACHE).load_from_file()
             return
         self.drive_session = drive_session
         self.drive = drive_session.drive
         self.service = drive_session.service
-        self.drive_tree = DriveTree(drive_session.drive)
+        self.drive_tree = DriveTree(drive_session.drive, TREE_CACHE)
         self.drive_tree = self.drive_tree.load_from_file()
 
     def clear_cache(self):
-        if self.drive_tree.clear_cache():
-            print('Cache cleared')
-        else:
-            print('There is no cache to clear')
+        if os.path.exists(TREE_CACHE):
+            os.remove(TREE_CACHE)
+            return True
+        return False
 
     # TODO: set this to allow multiple files with the same name
     def download(self, path, destination=DEFAULT_DOWNLOAD_PATH, recursive=True):
@@ -200,6 +200,6 @@ class ActionManager:
             print('Empty cache')
 
     def sync_cache(self):
-        self.drive_tree.load_complete_tree()
+        self.drive_tree.load_complete_tree(filter_enabled=False)
         self.drive_tree.save_to_file()
         print('Cache synced')

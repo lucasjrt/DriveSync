@@ -51,15 +51,18 @@ class SyntaxAnalyzer:
 
         args = main_parser.parse_args()
         # Just need drive session if performing any task
-        if args.command is not None or args.sync_cache:
+        if args.command is not None\
+           or args.sync_cache\
+           or args.sync_mirror:
             session = DriveSession(CREDENTIALS_FILE)
             print('Drive session started')
             am = ActionManager(session)
+            sc = SyncController(session.drive)
         else:
             am = ActionManager(None)
+            sc = SyncController(None)
 
         config_manager = ConfigManager()
-        sync_controller = SyncController()
         print('Settings loaded\n')
 
         #Operations
@@ -84,7 +87,7 @@ class SyntaxAnalyzer:
             am.download_tree()
             #sync_controller.start(args.start_target)
         elif args.command == 'stop':
-            sync_controller.stop()
+            sc.stop()
 
         #Options
         if args.show_cache:
@@ -93,6 +96,10 @@ class SyntaxAnalyzer:
             am.clear_cache()
         if args.sync_cache:
             am.sync_cache()
+        if args.sync_mirror:
+            sc.sync_mirror()
+        if args.show_mirror:
+            sc.show_mirror()
         if args.add_blacklist is not None:
             if args.add_blacklist:
                 config_manager.append_blacklist_files(args.add_blacklist)
@@ -110,7 +117,7 @@ class SyntaxAnalyzer:
         elif args.set_blacklist is not None:
             config_manager.set_blacklist_files(args.set_blacklist)
         elif args.set_whitelist is not None:
-            if args.whitelist:
+            if args.set_whitelist:
                 config_manager.set_whitelist_files(args.set_whitelist)
                 if not config_manager.get_whitelist_enabled():
                     config_manager.switch_whitelist_enabled()
@@ -247,10 +254,18 @@ class SyntaxAnalyzer:
                              action='store_true',
                              dest='show_cache',
                              help=HELPS['show-cache'][0])
+        options.add_argument('-sm',
+                             action='store_true',
+                             dest='show_mirror',
+                             help=HELPS['show-mirror'][0])
         options.add_argument('-syc',
                              action='store_true',
                              dest='sync_cache',
                              help=HELPS['sync-cache'][0])
+        options.add_argument('-sym',
+                             action='store_true',
+                             dest='sync_mirror',
+                             help=HELPS['sync-mirror'][0])
         mutex.add_argument('-W',
                            dest='set_whitelist',
                            metavar='FILE',

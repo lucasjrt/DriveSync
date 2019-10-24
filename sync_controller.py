@@ -2,11 +2,14 @@ import os
 import signal
 import subprocess
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
-from defines import LOG_FILE
 
-from defines import PID_FILE, SYNC_APPLICATION
+from defines import LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
+from drive_file import DriveTree
 
 class SyncController:
+    def __init__(self, drive):
+        self.mirror_tree = DriveTree(drive, TREE_MIRROR).load_from_file()
+
     # Remote action manager (local action manager is located at action_manager.py)
     def blacklist(self):
         print('Blacklisting')
@@ -28,6 +31,12 @@ class SyncController:
 
     def set_sync_delay(self):
         pass
+
+    def show_mirror(self):
+        if os.path.exists(TREE_MIRROR):
+            self.mirror_tree.print_tree()
+        else:
+            print('Empty mirror')
 
     def start(self, target_file):
         with open(PID_FILE, 'r') as sync:
@@ -51,6 +60,11 @@ class SyncController:
                 target_pid = int(pid.read())
                 print('Sending signal to', target_pid)
                 os.kill(target_pid, signal.SIGTERM)
+
+    def sync_mirror(self):
+        self.mirror_tree.load_complete_tree()
+        self.mirror_tree.save_to_file()
+        print('Mirror synced')
 
     def whitelist(self):
         pass
