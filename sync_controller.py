@@ -3,16 +3,43 @@ import signal
 import subprocess
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
 
-from defines import LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
-from drive_file import DriveTree
+from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
+from mime_names import TYPES
+from drive_tree import DriveTree
 
 class SyncController:
-    def __init__(self, drive):
+    def __init__(self, drive, am):
         self.mirror_tree = DriveTree(drive, TREE_MIRROR).load_from_file()
+        self.am = am
 
     # Remote action manager (local action manager is located at action_manager.py)
     def blacklist(self):
         print('Blacklisting')
+
+    def clear_mirror(self):
+        if os.path.exists(TREE_MIRROR):
+            os.remove(TREE_MIRROR)
+            print('Mirror cleared')
+        else:
+            print('Empty mirror')
+
+    def download_mirror(self):
+        '''Download all the files from the mirror tree'''
+        path = DEFAULT_DRIVE_SYNC_DIRECTORY
+        print('saving at:', path)
+        if not os.path.exists(path):
+            os.mkdir(path)
+        nodes = self.mirror_tree.get_root().get_children()
+        while nodes:
+            node = nodes[0]
+            nodes = nodes + node.get_children()
+            if node.get_mime() == TYPES['folder']:
+                if not os.path.exists(path + node.get_path()):
+                    os.mkdir(path + node.get_path())
+            else:
+                destination = path + '/' + node.get_parent().get_path()
+                self.am.download_from_node(node, destination, recursive=False)
+            print(nodes.pop(0).get_name(), 'downloaded')
 
     def force_sync(self):
         pass

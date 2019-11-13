@@ -57,10 +57,10 @@ class SyntaxAnalyzer:
             session = DriveSession(CREDENTIALS_FILE)
             print('Drive session started')
             am = ActionManager(session)
-            sc = SyncController(session.drive)
+            sc = SyncController(session.drive, am)
         else:
             am = ActionManager(None)
-            sc = SyncController(None)
+            sc = SyncController(None, am)
 
         config_manager = ConfigManager()
         print('Settings loaded\n')
@@ -84,8 +84,9 @@ class SyntaxAnalyzer:
 
         #Sync
         elif args.command == 'start':
-            am.download_tree()
             #sync_controller.start(args.start_target)
+            #am.download_cache()
+            sc.download_mirror()
         elif args.command == 'stop':
             sc.stop()
 
@@ -100,6 +101,8 @@ class SyntaxAnalyzer:
             sc.sync_mirror()
         if args.show_mirror:
             sc.show_mirror()
+        if args.clear_mirror:
+            sc.clear_mirror()
         if args.add_blacklist is not None:
             if args.add_blacklist:
                 config_manager.append_blacklist_files(args.add_blacklist)
@@ -234,6 +237,10 @@ class SyntaxAnalyzer:
                              action='store_true',
                              dest='clear_cache',
                              help=HELPS['clear-cache'][0])
+        options.add_argument('-cm',
+                             action='store_true',
+                             dest='clear_mirror',
+                             help=HELPS['clear-mirror'][0])
         mutex.add_argument('-rb',
                            dest='remove_blacklist',
                            metavar='FILE',

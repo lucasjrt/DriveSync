@@ -37,19 +37,20 @@ HELPS = \
 
     #Options
     'add-blacklist': ['''Adds one or more files to the blacklist. If no files are given,\
-                      it switches blacklist on or off. (If blacklist is enabled, automatically\
-                      disables it.)'''],
+                      it switches blacklist on or off (If blacklist is enabled, automatically\
+                      disables it)'''],
     'add-whitelist': ['''Adds one or more files to the whitelist. If no files are given,\
-                      it switches whitelist on or off. (If whitelist is enabled, automatically\
+                      it switches whitelist on or off (If whitelist is enabled, automatically\
                       disables it.)'''],
     'clear-cache': ['''Clear the local cache from drive files'''],
-    'remove-blacklist': ['''Removes the given files from blacklist.'''],
-    'remove-whitelist': ['''Removes the given files from whitelist.'''],
-    'set-blacklist': ['''Set blacklist to the given files. Clear filter if no files are given.'''],
-    'set-whitelist': ['''Set whitelist to the given files. Clear filter if no files are given.'''],
+    'clear-mirror': ['''Clear the local mirror from drive files'''],
+    'remove-blacklist': ['''Removes the given files from blacklist'''],
+    'remove-whitelist': ['''Removes the given files from whitelist'''],
+    'set-blacklist': ['''Set blacklist to the given files. Clear filter if no files are given'''],
+    'set-whitelist': ['''Set whitelist to the given files. Clear filter if no files are given'''],
     'show-cache': ['''Show the local cache tree from drive files'''],
     'show-mirror': ['''Show the local mirror tree from drive files'''],
-    'show-filter': ['''Show status from filter, either blacklist or whitelist.'''],
+    'show-filter': ['''Show status from filter, either blacklist or whitelist'''],
     'sync-cache': ['''Load the whole file tree to the local cache'''],
     'sync-mirror': ['''Load the whole file tree to the local mirror'''],
     'help': ['''Show help menu''']

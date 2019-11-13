@@ -3,10 +3,10 @@ import os
 import pickle
 
 from apiclient.http import MediaIoBaseDownload
-from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, DEFAULT_DOWNLOAD_PATH, TREE_CACHE
+from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, TREE_CACHE
 from mime_names import TYPES, CONVERTS
 
-from drive_file import DriveTree
+from drive_tree import DriveTree
 
 class ActionManager:
     # Local action manager (remote action manager is located at sync_controller.py)
@@ -23,20 +23,27 @@ class ActionManager:
     def clear_cache(self):
         if os.path.exists(TREE_CACHE):
             os.remove(TREE_CACHE)
-            return True
-        return False
+            print('Cache cleared')
+        else:
+            print('Empty cache')
 
-    # TODO: set this to allow multiple files with the same name
-    def download(self, path, destination=DEFAULT_DOWNLOAD_PATH, recursive=True):
-        node = self.drive_tree.get_node_from_path(path)
-        if not node:
-            print(path, 'not found')
-            return
+    def download_cache(self):
+        '''Download all the files from the cache tree'''
+        path = DEFAULT_DRIVE_SYNC_DIRECTORY
+        if not os.path.exists(path):
+            os.mkdir(path)
+        nodes = self.drive_tree.get_root().get_children()
+        for node in nodes:
+            nodes = nodes + node.get_children()
+            destination = path + '/' + node.get_path()
+            self.download_from_node(node, destination, recursive=False)
+            nodes.remove(node)
 
+    def download_from_node(self, node, destination, recursive=True):
+        print('Save path:', destination)
         destination = os.path.abspath(destination)
-
         if not os.path.exists(destination):
-            os.makedirs(destination)
+            os.mkdir(destination)
 
         file1 = self.drive.CreateFile({'id': node.get_id()})
         print('Downloading', file1['title'])
@@ -49,18 +56,19 @@ class ActionManager:
                 children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
                                                           % file1['id']}).GetList()
                 for child in children_list:
-                    self.download(path + '/' + child['title'], folder_path)
+                    self.download_from_path(node.get_path() + '/' + child['title'], folder_path)
                 return
             return
 
         if file1['mimeType'] in CONVERTS:
             file1['title'] = os.path.splitext(file1['title'])[0] + \
                                 CONVERTS[file1['mimeType']][1]
-            file1['mimeType'] = CONVERTS[file1['mimeType']][0]
+            mime = CONVERTS[file1['mimeType']][0]
+            request = self.service.files().export(fileId=file1['id'], mimeType=mime)
+        else:
+            request = self.service.files().get_media(fileId=file1['id'])
 
         save_path = destination + '/' + file1['title']
-
-        request = self.service.files().get_media(fileId=file1['id'])
         fh = io.FileIO(save_path, 'wb')
         downloader = MediaIoBaseDownload(fh, request, chunksize=10*1024*1024)
 
@@ -71,15 +79,14 @@ class ActionManager:
                   (file1['title'], int(status.progress()*100)), end='')
         print()
 
-    def download_tree(self):
-        path = DEFAULT_DRIVE_SYNC_DIRECTORY
-        if not os.path.exists(path):
-            os.mkdir(path)
-        nodes = self.drive_tree.get_root().get_children()
-        for node in nodes:
-            nodes = nodes + node.get_children()
-            self.download(node.get_path(), recursive=False)
-            nodes.remove(node)
+    # TODO: set this to allow multiple files with the same name
+    def download_from_path(self, drive_path, destination, recursive=True):
+        node = self.drive_tree.get_node_from_path(drive_path)
+        if not node:
+            print(drive_path, 'not found')
+            return
+
+        self.download_from_node(node, destination, recursive)
 
     def file_status(self):
         pass
@@ -117,7 +124,7 @@ class ActionManager:
                 print(file1)
             return
 
-        node = self.drive_tree.get_node_from_path(path)
+        node = self.drive_tree.get_node_from_path(path, exclusive=False)
         if not node:
             print('File not found')
             return
