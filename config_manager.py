@@ -98,6 +98,12 @@ class ConfigManager:
         print(total, 'files removed from whitelist')
         self.save_settings()
 
+    def set_autostart(self, autostart):
+        pass
+
+    def set_sync_delay(self):
+        pass
+
     def switch_blacklist_enabled(self):
         self.settings['blacklist-enabled'] = not self.settings['blacklist-enabled']
         if self.settings['blacklist-enabled'] and self.settings['whitelist-enabled']:

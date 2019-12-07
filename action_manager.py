@@ -3,21 +3,21 @@ import os
 import pickle
 
 from apiclient.http import MediaIoBaseDownload
-from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, TREE_CACHE
+# from apiclient.http import MediaFileUpload
+from defines import DEFAULT_DOWNLOAD_PATH, TREE_CACHE
 from mime_names import TYPES, CONVERTS
 
 from drive_tree import DriveTree
+from drive_file import DriveFile
 
 class ActionManager:
     # Local action manager (remote action manager is located at sync_controller.py)
-    def __init__(self, drive_session):
-        if drive_session is None:
-            self.drive_tree = DriveTree(None, TREE_CACHE).load_from_file()
+    def __init__(self, service, root):
+        if service is None:
+            self.drive_tree = DriveTree(None, TREE_CACHE, root).load_from_file()
             return
-        self.drive_session = drive_session
-        self.drive = drive_session.drive
-        self.service = drive_session.service
-        self.drive_tree = DriveTree(drive_session.drive, TREE_CACHE)
+        self.service = service
+        self.drive_tree = DriveTree(service, TREE_CACHE, root)
         self.drive_tree = self.drive_tree.load_from_file()
 
     def clear_cache(self):
@@ -27,17 +27,12 @@ class ActionManager:
         else:
             print('Empty cache')
 
+    def download(self, file1, destination=DEFAULT_DOWNLOAD_PATH):
+        node = self.drive_tree.get_node_from_path(file1)
+        node.download(destination, self.service)
+
     def download_cache(self):
-        '''Download all the files from the cache tree'''
-        path = DEFAULT_DRIVE_SYNC_DIRECTORY
-        if not os.path.exists(path):
-            os.mkdir(path)
-        nodes = self.drive_tree.get_root().get_children()
-        for node in nodes:
-            nodes = nodes + node.get_children()
-            destination = path + '/' + node.get_path()
-            self.download_from_node(node, destination, recursive=False)
-            nodes.remove(node)
+        self.drive_tree.download()
 
     def download_from_node(self, node, destination, recursive=True):
         print('Save path:', destination)
@@ -45,30 +40,35 @@ class ActionManager:
         if not os.path.exists(destination):
             os.mkdir(destination)
 
-        file1 = self.drive.CreateFile({'id': node.get_id()})
-        print('Downloading', file1['title'])
+        file1 = self.service.files().get(fileId=node.get_id(),\
+                                         fields='files(id, name, mimeType, parents)')
+        print('Downloading', file1['name'])
 
         if file1['mimeType'] == TYPES['folder']:
-            folder_path = destination + '/' + file1['title']
+            folder_path = destination + '/' + file1['name']
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             if recursive:
-                children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
-                                                          % file1['id']}).GetList()
+                # children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
+                #                                           % file1['id']}).GetList()
+                children_list = self.service.files().\
+                                list(q='"%s" in parents and trashed = false' % file1['id'],\
+                                     fields='files(id, name, mimeType, parents)').execute
                 for child in children_list:
-                    self.download_from_path(node.get_path() + '/' + child['title'], folder_path)
+                    self.download_from_path(node.get_path() + '/' + child['name'], folder_path)
                 return
             return
 
         if file1['mimeType'] in CONVERTS:
-            file1['title'] = os.path.splitext(file1['title'])[0] + \
+            file1['name'] = os.path.splitext(file1['name'])[0] + \
                                 CONVERTS[file1['mimeType']][1]
             mime = CONVERTS[file1['mimeType']][0]
             request = self.service.files().export(fileId=file1['id'], mimeType=mime)
         else:
+            file1.UpdateMetadata()
             request = self.service.files().get_media(fileId=file1['id'])
 
-        save_path = destination + '/' + file1['title']
+        save_path = destination + '/' + file1['name']
         fh = io.FileIO(save_path, 'wb')
         downloader = MediaIoBaseDownload(fh, request, chunksize=10*1024*1024)
 
@@ -76,7 +76,7 @@ class ActionManager:
         while not done:
             status, done = downloader.next_chunk()
             print("\rProgress %s: %3d%%." %
-                  (file1['title'], int(status.progress()*100)), end='')
+                  (file1['name'], int(status.progress()*100)), end='')
         print()
 
     # TODO: set this to allow multiple files with the same name
@@ -91,34 +91,23 @@ class ActionManager:
     def file_status(self):
         pass
 
-    def get_drive(self):
-        return self.drive
-
-    def get_files_to_file(self):
-        ''' stupid function that is still being thought about '''
-        files = self.drive.ListFile({'q': '"root" in parents and trashed = false'}).GetList()
-        with open("Files.dat", "wb") as f:
-            pickle.dump(files, f, pickle.HIGHEST_PROTOCOL)
-            # files = pickle.load(f)
-            # print(files)
-
     def get_service(self):
-        return self.get_service
+        return self.service
 
     def get_storage(self):
-        return self.drive_session.get_storage()
+        pass
 
     def get_tree(self):
         return self.drive_tree
 
-    def list_files(self, path, list_trash):
-        print('Listing files:')
+    def list_files(self, path, list_trash=False):
         files = []
         if list_trash:
-            file_list = self.drive.ListFile({'q': "trashed = true"}).GetList()
-
+            file_list = self.service.files().list(q='trashed = true',
+                                                  fields='files(name)').execute()\
+                                                  .get('files', [])
             for file1 in file_list:
-                files.append(file1['title'])
+                files.append(file1['name'])
 
             for file1 in sorted(files, key=lambda s: s.casefold()):
                 print(file1)
@@ -129,11 +118,13 @@ class ActionManager:
             print('File not found')
             return
 
-        files = [node.get_name() for node in node.get_children()]
-
-
+        files = self.service.files().list(q='"%s" in parents' %node.get_id(),
+                                          fields='files(name)')\
+                                          .execute().get('files', [])
+        files = [f['name'] for f in files]
         for file1 in sorted(files, key=lambda s: s.casefold()):
             print(file1)
+        print()
 
     def mkdir(self, file_path):
         dir_path, dir_name = os.path.split(file_path)
@@ -143,20 +134,22 @@ class ActionManager:
 
         print('Making directory with name "%s" in %s' %(dir_name, dir_path))
 
-        node = self.drive_tree.get_node_from_path(dir_path)
-        if not node:
+        parent = self.drive_tree.get_node_from_path(dir_path)
+        if not parent:
             print(dir_path, 'not found')
-
-        file1 = self.drive.CreateFile({'title': dir_name,
-                                       'mimeType': TYPES['folder'],
-                                       'parents': [{'id': node.get_id()}]})
-        file1.Upload()
-        self.drive_tree.add_file(node, file1['id'], dir_name)
+        file_metadata = {'name': dir_name,
+                         'mimeType': TYPES['folder'], 
+                         'parents': [parent.get_id()]}
+        file1 = self.service.files().create(body=file_metadata,
+                                            # media_body=media,
+                                            fields='id, name, mimeType, parents').execute()
+        DriveFile(parent, file1)
+        print('name:', file1['name'], 'id:', file1['id'])
 
     def move(self, origin, dest):
         print('Moving', origin, 'to', dest)
 
-    def open_in_drive(self):
+    def open_in_browser(self):
         pass
 
     def rename(self, file_path, new_name):
@@ -166,39 +159,54 @@ class ActionManager:
             print('File not found')
             return
 
-        file1 = self.drive.CreateFile({'id': node.get_id()})
-        file1.FetchMetadata(fetch_all=True)
-        file1['title'] = new_name
-        file1.Upload()
+        self.service.files().update(fileId=node.get_id(),
+                                    body={'name': new_name}).execute()
         node.set_name(new_name)
         self.drive_tree.save_to_file()
 
-    def rm(self, file_list, force_remove=False):
-        print('Removing files:', ', '.join(file_list))
-        for file_name in file_list:
+    def rm(self, file_name, force_remove=False, trash_remove=False):
+        if not trash_remove:
             node = self.drive_tree.get_node_from_path(file_name)
             if not node:
                 print(file_name, 'not found')
-                continue
-            file1 = self.drive.CreateFile({'id': node.get_id()})
+                return
             if force_remove:
-                file1.Delete()
+                self.service.files().delete(fileId=node.get_id()).execute()
             else:
-                file1.Trash()
+                self.service.files().update(fileId=node.get_id(),
+                                            body={'trashed': True}).execute()
+        else:
+            trashed_files = self.service.files().list(q='trashed = true',
+                                                      fields='files(name, id)').execute()\
+                                                      .get('files', [])
+            deleting_file = None
+            for file1 in trashed_files:
+                if file1['name'] == file_name:
+                    if deleting_file:
+                        # TODO: Fix this to choose which files wants to delete
+                        print('More than one file were found with the name of', file_name)
+                        print('(This will be fixed in a future release)')
+                        return
+                    deleting_file = (file1['name'], file1['id'])
+            if deleting_file:
+                self.service.files().delete(fileId=deleting_file[1]).execute()
+            else:
+                print('"', file_name, '" not found in trash', sep='')
 
-    def restore(self, restore_files):
-        print('Restoring', ', '.join(restore_files))
-        file_list = self.drive.ListFile({'q': 'trashed = true'}).GetList()
-        for title in restore_files:
-            found = False
-            for file1 in file_list:
-                if file1['title'] == title:
-                    restored_file = self.drive.CreateFile({'id': file1['id']})
-                    restored_file.UnTrash()
-                    print(restored_file['title'], 'restored')
-                    found = True
-            if not found:
-                print(title, 'not found')
+    def restore(self, restore_file):
+        trashed_files = self.service.files().list(q='trashed = true',
+                                                  fields='files(name, id)')\
+                                                  .execute().get('files', [])
+        found = False
+        for file1 in trashed_files:
+            if file1['name'] == restore_file:
+                found = True
+                self.service.files().update(fileId=file1['id'],
+                                            body={'trashed': False}).execute()
+        if not found:
+            print('"',restore_file, '" not found', sep='')
+            return
+        print(restore_file, 'restored')
 
     def show_cache(self):
         if os.path.exists(TREE_CACHE):

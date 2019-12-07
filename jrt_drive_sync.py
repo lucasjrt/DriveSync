@@ -4,8 +4,8 @@ from fcntl import flock, LOCK_EX, LOCK_NB
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from defines import PID_FILE, CREDENTIALS_FILE
-from drive_file import DriveTree
+from defines import CREDENTIALS_FILE, PID_FILE, TREE_CACHE, TREE_MIRROR
+from drive_tree import DriveTree
 from drive_session import DriveSession
 from utils import log, load_settings, delay_to_seconds
 from sig_handlers import SignalHandler
@@ -13,7 +13,8 @@ from sig_handlers import SignalHandler
 class Synchronizer:
     def __init__(self):
         self.drive_session = DriveSession(CREDENTIALS_FILE)
-        self.drive_tree = DriveTree(self.drive_session.drive)
+        self.cache_tree = DriveTree(self.drive_session.drive, TREE_CACHE)
+        self.mirror_tree = DriveTree(self.drive_session.drive, TREE_MIRROR)
         settings = load_settings()
         self.do_sync = True
         self.delay = delay_to_seconds(settings['delay-time'])

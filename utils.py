@@ -12,6 +12,9 @@ def add_slashes(files):
             files[i] = '/' + files[i]
         if w[-1] != '/':
             files[i] = files[i] + '/'
+
+    for i in range(len(files)):
+        pass
     return files
 
 def bytes_to_human(bytes1, binary=False):

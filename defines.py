@@ -16,7 +16,9 @@ HELPS = \
 {
     #Operations
     'download': ['''Download a folder or file from drive to local
-    storage (Default: ~/Drive_download'''],
+    storage (Default: ~/Drive_downloads'''],
+    'download-cache': ['''Download the cache tree to the local machine'''],
+    'download-mirror': ['''Download the mirror tree to the local machine'''],
     'list': [
         '''List drive root or if specified, a folder''',
         '''List trash'''
@@ -27,7 +29,8 @@ HELPS = \
     'restore': ['''Restores a file from trash'''],
     'remove': [
         '''Move a drive file to trash (see [%(prog)s rm -h] for extra information)''',
-        '''Delete the file permanently without moving to trash'''
+        '''Delete the file permanently without moving to trash''',
+        '''Sets the deletion to be on the trash, instead of MyDrive files'''
     ],
 
     #Synchronizer
@@ -36,12 +39,10 @@ HELPS = \
     'stop': ['''Stops syncronizing the drive'''],
 
     #Options
-    'add-blacklist': ['''Adds one or more files to the blacklist. If no files are given,\
-                      it switches blacklist on or off (If blacklist is enabled, automatically\
-                      disables it)'''],
-    'add-whitelist': ['''Adds one or more files to the whitelist. If no files are given,\
-                      it switches whitelist on or off (If whitelist is enabled, automatically\
-                      disables it.)'''],
+    'add-blacklist': ['''Adds one or more files to the blacklist and enables blacklist if off. \
+                      If no files are given it toggles blacklist enabled'''],
+    'add-whitelist': ['''Adds one or more files to the whitelist and enables whitelist if off.\
+                      If no files are given it toggles whitelist enabled'''],
     'clear-cache': ['''Clear the local cache from drive files'''],
     'clear-mirror': ['''Clear the local mirror from drive files'''],
     'remove-blacklist': ['''Removes the given files from blacklist'''],
