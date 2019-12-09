@@ -1,9 +1,7 @@
 import os.path
 import pickle
 
-# from httplib2 import ServerNotFoundError
-# from pydrive.auth import GoogleAuth
-# from pydrive.drive import GoogleDrive
+from httplib2 import ServerNotFoundError
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -27,7 +25,11 @@ class DriveSession:
                 creds = flow.run_local_server(port=0)
             with open('token.pickle', 'wb') as token:
                 pickle.dump(creds, token)
-        self.service = build('drive', 'v3', credentials=creds)
+        try:
+            self.service = build('drive', 'v3', credentials=creds)
+        except ServerNotFoundError:
+            print('No internet connection')
+            exit(0)
 
     def get_service(self):
         return self.service

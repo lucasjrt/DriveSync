@@ -1,9 +1,7 @@
 import io
 import os
-import pickle
 
 from apiclient.http import MediaIoBaseDownload
-# from apiclient.http import MediaFileUpload
 from defines import DEFAULT_DOWNLOAD_PATH, TREE_CACHE
 from mime_names import TYPES, CONVERTS
 
@@ -49,8 +47,6 @@ class ActionManager:
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             if recursive:
-                # children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
-                #                                           % file1['id']}).GetList()
                 children_list = self.service.files().\
                                 list(q='"%s" in parents and trashed = false' % file1['id'],\
                                      fields='files(id, name, mimeType, parents)').execute
@@ -138,7 +134,7 @@ class ActionManager:
         if not parent:
             print(dir_path, 'not found')
         file_metadata = {'name': dir_name,
-                         'mimeType': TYPES['folder'], 
+                         'mimeType': TYPES['folder'],
                          'parents': [parent.get_id()]}
         file1 = self.service.files().create(body=file_metadata,
                                             # media_body=media,
@@ -204,7 +200,7 @@ class ActionManager:
                 self.service.files().update(fileId=file1['id'],
                                             body={'trashed': False}).execute()
         if not found:
-            print('"',restore_file, '" not found', sep='')
+            print('"', restore_file, '" not found', sep='')
             return
         print(restore_file, 'restored')
 

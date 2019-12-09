@@ -13,8 +13,9 @@ from sig_handlers import SignalHandler
 class Synchronizer:
     def __init__(self):
         self.drive_session = DriveSession(CREDENTIALS_FILE)
-        self.cache_tree = DriveTree(self.drive_session.drive, TREE_CACHE)
-        self.mirror_tree = DriveTree(self.drive_session.drive, TREE_MIRROR)
+        root_file = self.drive_session.get_service().files().get(fileId='root').execute()
+        self.cache_tree = DriveTree(self.drive_session.get_service(), TREE_CACHE, root_file)
+        self.mirror_tree = DriveTree(self.drive_session.service, TREE_MIRROR, root_file)
         settings = load_settings()
         self.do_sync = True
         self.delay = delay_to_seconds(settings['delay-time'])

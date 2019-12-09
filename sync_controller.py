@@ -21,26 +21,7 @@ class SyncController:
 
     def download_mirror(self):
         # '''Download all the files from the mirror tree'''
-        # path = DEFAULT_DRIVE_SYNC_DIRECTORY
-        # if not os.path.exists(path):
-        #     os.mkdir(path)
-        # nodes = self.mirror_tree.get_root().get_children()
-        # while nodes:
-        #     node = nodes[0]
-        #     nodes = nodes + node.get_children()
-        #     if node.get_mime() == TYPES['folder']:
-        #         if not os.path.exists(path + node.get_path()):
-        #             os.mkdir(path + node.get_path())
-        #         destination = path + node.get_parent().get_path()
-        #         self.am.download_from_node(node, destination, recursive=False)
-        #     else:
-        #         destination = path + node.get_parent().get_path()
-        #         self.am.download_from_node(node, destination, recursive=False)
-        #     print(nodes.pop(0).get_name(), 'downloaded')
-        self.mirror_tree.download(DEFAULT_DRIVE_SYNC_DIRECTORY)
-
-    def get_drive(self):
-        return self.am.get_drive()
+        self.mirror_tree.download(DEFAULT_DRIVE_SYNC_DIRECTORY, self.am.get_service())
 
     def get_service(self):
         return self.am.get_service()

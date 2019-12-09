@@ -74,8 +74,6 @@ class DriveTree:
 
             next_node = closest_node
             for p in path_list:
-                # file_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
-                #                                       % closest_node.get_id()}).GetList()
                 file_list = self.service.files().list(q="'%s' in parents and trashed = false"
                                                       % closest_node.get_id(),
                                                       fields='files(name, id, mimeType, parents)')\
@@ -109,200 +107,8 @@ class DriveTree:
     def get_root(self):
         return self.root
 
-    def load_from_file(self, file_path=None):
-        '''Loads the tree from disk'''
-        if not file_path:
-            file_path = self.save_path
-
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            with open(file_path, 'rb') as f:
-                return pickle.load(f)
-        return self
-
-    def print_folder(self, folder):
-        '''Prints the folder recusrively'''
-        depth = folder.get_level()
-        prefix = depth * ('  |') + '--'
-        print(prefix, folder.get_name(), '\tid:', folder.get_id(), sep='')
-        for child in folder.get_children():
-            self.print_folder(child)
-
-    def print_tree(self):
-        self.print_folder(self.root)
-
-    def remove_folder(self, id):
-        folder = self.find_file(id)
-        if folder:
-            folder.get_parent.removeChildren(folder)
-
-    def save_to_file(self, file_path=None):
-        '''Saves the tree to disk'''
-        if not file_path:
-            file_path = self.save_path
-        if not os.path.exists(os.path.split(os.path.abspath(file_path))[0]):
-            os.makedirs(os.path.split(os.path.abspath(file_path))[0])
-
-        with open(file_path, 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-            f.flush()
-
-    # whitelist and blacklist don't need to require all the files,
-    # only specific files (is it worth it? don't think so. too complex query)
-    # NOTE: blacklist and whitelist works better if in separate if statements
-    @DeprecationWarning
-    def load_tree(self, filter_enabled=True):
-        whitelist = blacklist = None
-        if filter_enabled:
-            settings = load_settings()
-            if settings['whitelist-enabled']:
-                whitelist = settings['whitelist-files']
-            elif settings['blacklist-enabled']:
-                blacklist = settings['blacklist-files']
-
-        if os.path.exists('mirror.dat'):
-            with open('mirror.dat', 'rb') as f:
-                remote_files = pickle.load(f)
-        else:
-            print('Requesting files')
-            query = 'trashed = false'
-            remote_files = self.drive.ListFile({'q': query}).GetList()
-            with open('mirror.dat', 'wb') as f:
-                pickle.dump(remote_files, f, pickle.HIGHEST_PROTOCOL)
-
-        metadata = [file1 for file1 in remote_files if file1['parents']]
-
-        self.root.children = []
-        stack = [] # [metadata]
-        nodes = [] # [DriveFile]
-        i = 0 # used to pin the node that is looking for a parent
-        j = 0 # used to pin the next node that will look for the parent
-        def insert_ordered_node(node, nodes):
-            lower_bound = 0
-            upper_bound = len(nodes) - 1
-            # loop to find the position where to insert node
-            while upper_bound - lower_bound > 1:
-                half = (upper_bound + lower_bound) // 2
-                if node.get_id() < nodes[half].get_id():
-                    upper_bound = half
-                else:
-                    lower_bound = half
-            # insert the node to nodes list
-            if node.get_id() < nodes[lower_bound].get_id():
-                nodes.insert(lower_bound, node)
-            else:
-                if node.get_id() < nodes[upper_bound].get_id():
-                    nodes.insert(upper_bound, node)
-                else:
-                    nodes.insert(upper_bound + 1, node)
-
-        total = len(metadata)
-        while metadata or stack:
-            current = len(metadata)
-            if (current % 200) == 0:
-                print('\rGenerating tree: %.2f%%' % (((total - current)/total) * 100), end='')
-            enqueue = None
-            j = 0
-            # find the parent meta to the pinned one
-            for data in metadata:
-                if metadata[i]['parents'][0]['id'] == data['id']:
-                    enqueue = metadata[i]
-                    break
-                j += 1
-
-            # parent is not an object
-            if enqueue:
-                stack.append(enqueue)
-                metadata.pop(i)
-                if j < i:
-                    i = j
-                else:
-                    i = j - 1
-            # parent node is root
-            elif metadata[i]['parents'][0]['id'] == self.root.get_id():
-                title = ('/' + metadata[i]['name'] + '/')
-                if (blacklist and title in blacklist)\
-                or (whitelist and not any(title in elem for elem in whitelist)):
-                    stack = []
-                    metadata.pop(i)
-                    i = 0
-                    continue
-                child = DriveFile(self.root, metadata[i])
-                # check if nodes is empty, to avoid 'out of bounds'
-                if not nodes:
-                    nodes.append(child)
-                else:
-                    insert_ordered_node(child, nodes)
-
-                while stack:
-                    item = stack.pop()
-                    title = title + '/' + item['name'] + '/'
-                    if (blacklist and (title in blacklist)) \
-                    or (whitelist and not \
-                    any(elem in title for elem in whitelist)):
-                        stack = []
-                        break
-                    parent = child
-                    child = DriveFile(parent, item)
-                    insert_ordered_node(child, nodes)
-
-                metadata.pop(i)
-                i = 0
-            # parent object exists
-            else:
-                parent_id = metadata[i]['parents'][0]['id']
-                lower_bound = 0
-                upper_bound = len(nodes) - 1
-                half = 0
-
-                # set the position of the value to any of the bounds
-                while upper_bound >= lower_bound:
-                    half = (lower_bound + upper_bound) // 2
-                    if nodes[half].get_id() == parent_id:
-                        break
-                    elif parent_id < nodes[half].get_id():
-                        upper_bound = half - 1
-                    else:
-                        lower_bound = half + 1
-                    half = (lower_bound + upper_bound) // 2
-
-                if not nodes:
-                    stack = []
-                    metadata.pop(i)
-                    i = 0
-                    continue
-                elif filter_enabled:
-                    title = nodes[half].get_path() + metadata[i]['name'] + '/'
-                    if (blacklist and (title in blacklist)) \
-                    or (whitelist and not \
-                    any(elem in title for elem in whitelist)):
-                        stack = []
-                        metadata.pop(i)
-                        i = 0
-                        continue
-                if nodes[half].get_id() != parent_id:
-                    metadata.pop(i)
-                    stack = []
-                    i = 0
-                    continue
-
-                child = DriveFile(nodes[half], metadata[i])
-                insert_ordered_node(child, nodes)
-                while stack:
-                    parent = child
-                    item = stack.pop()
-                    if (blacklist and (title in blacklist))\
-                    or (whitelist and not \
-                    any(elem in title for elem in whitelist)):
-                        stack = []
-                        break
-                    child = DriveFile(parent, item)
-                    insert_ordered_node(child, nodes)
-                metadata.pop(i)
-                i = 0
-        print('\rGenerating tree: 100%      ')
-
     def load_complete_tree(self, filter_enabled=True, complete=True):
-        """Creates a folder hash table and another non-folder hash table
+        '''Creates a folder hash table and another non-folder hash table
         stores nodes in the first hash and the id is the key (e.g. /MyDrive/Books/Fiction)
         the second one simply stores the file struct and the id is the
         key (e.g. Star Wars.pdf).
@@ -311,7 +117,7 @@ class DriveTree:
         :type filter_enabled: bool.
         :param complete: If will link files to tree.
         :type complete: bool.
-        """
+        '''
         whitelist = blacklist = None
         if filter_enabled:
             settings = load_settings()
@@ -461,3 +267,40 @@ class DriveTree:
                         continue
                     parent = self.root
                 DriveFile(parent, metadata)
+
+    def load_from_file(self, file_path=None):
+        '''Loads the tree from disk'''
+        if not file_path:
+            file_path = self.save_path
+
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            with open(file_path, 'rb') as f:
+                return pickle.load(f)
+        return self
+
+    def print_folder(self, folder):
+        '''Prints the folder recusrively'''
+        depth = folder.get_level()
+        prefix = depth * ('  |') + '--'
+        print(prefix, folder.get_name(), '\tid:', folder.get_id(), sep='')
+        for child in folder.get_children():
+            self.print_folder(child)
+
+    def print_tree(self):
+        self.print_folder(self.root)
+
+    def remove_folder(self, id):
+        folder = self.find_file(id)
+        if folder:
+            folder.get_parent.removeChildren(folder)
+
+    def save_to_file(self, file_path=None):
+        '''Saves the tree to disk'''
+        if not file_path:
+            file_path = self.save_path
+        if not os.path.exists(os.path.split(os.path.abspath(file_path))[0]):
+            os.makedirs(os.path.split(os.path.abspath(file_path))[0])
+
+        with open(file_path, 'wb') as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+            f.flush()
