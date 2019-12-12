@@ -114,6 +114,10 @@ class ActionManager:
             print('File not found')
             return
 
+        if node.get_mime() != TYPES['folder']:
+            print(node.get_name(), 'is not listable')
+            return
+
         files = self.service.files().list(q='"%s" in parents' %node.get_id(),
                                           fields='files(name)')\
                                           .execute().get('files', [])

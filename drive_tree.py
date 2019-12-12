@@ -10,7 +10,6 @@ class DriveTree:
     def __init__(self, service, save_path, root):
         self.save_path = save_path
         if service is None:
-            print('service is none')
             return
         self.root = DriveFile(None, root)
         self.service = service
@@ -92,17 +91,17 @@ class DriveTree:
 
     def get_path_from_id(self, fileId):
         file1 = self.service.files().get(fileId=fileId,
-                                         fields='file(mimeType, parents)').execute()
+                                         fields='name, mimeType, parents').execute()
         isfolder = ''
         if file1['mimeType'] == TYPES['folder']:
             isfolder = '/'
-        if not file1['parents']:
+        if not 'parents' in file1:
             return '?' + file1['name']
         parent = file1['parents'][0]
         if parent == self.root.get_id():
             return '/' + file1['name'] + isfolder
 
-        return self.get_path_from_id(parent['id']) + file1['name'] + isfolder
+        return self.get_path_from_id(parent) + file1['name'] + isfolder
 
     def get_root(self):
         return self.root
@@ -128,36 +127,38 @@ class DriveTree:
 
         # =========== debug code ===========
         # just to keep local query to not request files every run
-        if not os.path.exists('mirror.dat'):
-            print('Requesting files')
-            query = 'trashed = false'
-            files_metadata = []
+        if not os.path.exists('folders.dat'):
+            print('Requesting folders')
+            #=== changing files request ===
+            query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
+            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            folders_metadata = []
             pageToken = None
             while True:
                 result = self.service.files().list(q=query,\
-                                                fields='nextPageToken, \
-                                                    files(id, name, mimeType, parents)',\
+                                                fields=fields,\
                                                 pageToken=pageToken,\
                                                 pageSize=1000).execute()
-                files_metadata = files_metadata + result.get('files', [])
+                folders_metadata += result.get('files', [])
                 pageToken = result.get('nextPageToken')
                 if not pageToken:
                     break
-            with open('mirror.dat', 'wb') as f:
-                pickle.dump(files_metadata, f, pickle.HIGHEST_PROTOCOL)
+            with open('folders.dat', 'wb') as f:
+                pickle.dump(folders_metadata, f, pickle.HIGHEST_PROTOCOL)
         else:
-            with open('mirror.dat', 'rb') as f:
-                files_metadata = pickle.load(f)
+            with open('folders.dat', 'rb') as f:
+                folders_metadata = pickle.load(f)
         # =========== debug code ===========
 
         # =========== real code ===========
         # print('Requesting files')
-        # #TODO: improve query
         # query = 'trashed = false'
-        # files_metadata = []
+        # folders = []
         # pageToken = None
         # while True:
+        #     fields = 'nextPageToken, files(name, id, mimeType, parents, shared)'
         #     result = self.service.files().list(q=query,\
+        #                                        fields=fields,\
         #                                        pageToken=pageToken,\
         #                                        pageSize=1000).execute()
         #     files_metadata = files_metadata + result.get('files', [])
@@ -165,24 +166,15 @@ class DriveTree:
         #     if not pageToken:
         #         break
         # =========== real code ===========
-
         # just the folders vector, will be converted to hash bellow
-        folders = [f for f in files_metadata\
-                   if f['mimeType'] == TYPES['folder']\
-                   and 'parents' in f]
-        self.files_hash = {f['id']: f for f in files_metadata\
-                                     if f['mimeType'] != TYPES['folder']\
-                                     and 'parents' in f}
+        folders = [f for f in folders_metadata\
+                   if 'parents' in f]
         self.root.children = [] # empty tree
         stack = [] # [metadata]
         self.folders_hash = {}
-        total = len(folders)
         i = 0 # used to pin the node that is looking for a parent
         j = 0 # used to pin the next node that will look for the parent
         while folders or stack:
-            current = len(folders)
-            if (current % 200) == 0:
-                print('\rGenerating tree: %.2f%%' % (((total - current)/total) * 100), end='')
             enqueue = None
             j = 0
             for folder in folders:
@@ -253,15 +245,45 @@ class DriveTree:
                     self.folders_hash[item['id']] = child
                 folders.pop(i)
                 i = 0
-        print('\rGenerating tree: 100%     ')
         if complete:
-            for file_id, metadata in list(self.files_hash.items()):
-                if not metadata['parents'][0] == self.root.get_id():
-                    if not metadata['parents'][0] in self.folders_hash:
-                        self.files_hash.pop(file_id)
+            if self.folders_hash:
+                parents_query = ['mimeType != \'%s\' and ("%s" in parents'
+                                 % (TYPES['folder'], list(self.folders_hash)[0])]
+                i = 0 # counter
+                j = 0 # index of the list
+                for item in list(self.folders_hash)[1:]:
+                    adding = '"%s" in parents' % item
+                    # 30000 is the max body size before too complex query
+                    if len(' or ' + parents_query[j]) >= 25000:
+                        parents_query[j] += ')'
+                        j += 1
+                        i = 0
+                        parents_query.append('mimeType != \'%s\' and ("%s" in parents'
+                                             % (TYPES['folder'], item))
                         continue
-                    else:
-                        parent = self.folders_hash[metadata['parents'][0]]
+                    parents_query[j] += ' or ' + adding
+                    i += 1
+                parents_query[j] += ')'
+            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            pageTokens = [None] * len(parents_query)
+            files_metadata = []
+            while True:
+                for i, query in enumerate(parents_query):
+                    if pageTokens[i] != '0':
+                        result = self.service.files().list(q=query,\
+                                                        fields=fields,\
+                                                        pageToken=pageTokens[i],\
+                                                        pageSize=1000).execute()
+                        files_metadata += result.get('files', [])
+                        pageTokens[i] = result.get('nextPageToken')
+                        if not pageTokens[i]:
+                            pageTokens[i] = '0'
+                if all(token == '0' for token in pageTokens):
+                    break
+
+            for metadata in files_metadata:
+                if not metadata['parents'][0] == self.root.get_id():
+                    parent = self.folders_hash[metadata['parents'][0]]
                 else:
                     if filter_enabled:
                         continue
