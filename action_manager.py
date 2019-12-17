@@ -2,7 +2,7 @@ import io
 import os
 
 from apiclient.http import MediaIoBaseDownload
-from defines import DEFAULT_DOWNLOAD_PATH, TREE_CACHE
+from defines import DEFAULT_DOWNLOAD_CACHE, DEFAULT_DOWNLOAD_PATH, TREE_CACHE
 from mime_names import TYPES, CONVERTS
 
 from drive_tree import DriveTree
@@ -30,7 +30,7 @@ class ActionManager:
         node.download(destination, self.service)
 
     def download_cache(self):
-        self.drive_tree.download()
+        self.drive_tree.download(DEFAULT_DOWNLOAD_CACHE)
 
     def download_from_node(self, node, destination, recursive=True):
         print('Save path:', destination)

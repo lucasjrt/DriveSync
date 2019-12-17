@@ -22,14 +22,14 @@ class DriveFile:
 
     def download(self, destination, service, recursive=True):
         destination = os.path.abspath(destination)
-        file1 = service.files().get(fileId=self.id).execute()
 
-        if file1['mimeType'] == TYPES['folder']:
+        if self.mime == TYPES['folder']:
             folder_path = destination + self.get_path()
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             print('Progress %s: 100%%' % self.name)
             if recursive:
+                file1 = service.files().get(fileId=self.id).execute()
                 children_list =\
                     service.files().list(q="'%s' in parents and trashed = false"
                                          % file1['id'],
@@ -40,6 +40,8 @@ class DriveFile:
                     node.download(destination, service)
                 return
             return
+
+        file1 = service.files().get(fileId=self.id).execute()
 
         if file1['mimeType'] in CONVERTS:
             file1['name'] = os.path.splitext(file1['name'])[0] + \

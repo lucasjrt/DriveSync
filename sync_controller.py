@@ -3,12 +3,12 @@ import signal
 import subprocess
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
 
-from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
+from defines import DEFAULT_DOWNLOAD_MIRROR, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
 from drive_tree import DriveTree
 
 class SyncController:
-    def __init__(self, drive, am, root):
-        self.mirror_tree = DriveTree(drive, TREE_MIRROR, root).load_from_file()
+    def __init__(self, service, am, root):
+        self.mirror_tree = DriveTree(service, TREE_MIRROR, root).load_from_file()
         self.am = am
 
     # Remote action manager (local action manager is located at action_manager.py)
@@ -21,7 +21,7 @@ class SyncController:
 
     def download_mirror(self):
         # '''Download all the files from the mirror tree'''
-        self.mirror_tree.download(DEFAULT_DRIVE_SYNC_DIRECTORY, self.am.get_service())
+        self.mirror_tree.download(DEFAULT_DOWNLOAD_MIRROR)
 
     def get_service(self):
         return self.am.get_service()

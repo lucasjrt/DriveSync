@@ -156,8 +156,14 @@ class SyntaxAnalyzer:
         # -sf
         if args.show_filter:
             config_manager.show_filter_status()
+
+        # -dc
         if args.download_cache:
             am.download_cache()
+
+        # -dm
+        if args.download_mirror:
+            sc.download_mirror()
 
     def add_download_parser(self, download_parser):
         download_parser.add_argument('download_files',

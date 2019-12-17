@@ -22,11 +22,9 @@ class DriveTree:
             os.mkdir(destination)
         nodes = self.get_root().get_children()
         while nodes:
-            node = nodes[0]
+            node = nodes.pop(0)
             nodes = nodes + node.get_children()
-            path = destination + node.get_parent().get_path()
-            node.download(path, self.service, recursive=False)
-            print(nodes.pop(0).get_name(), 'downloaded')
+            node.download(destination, self.service, recursive=False)
 
     def find_file(self, node_id):
         if node_id == self.root.get_id():
