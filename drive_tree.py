@@ -127,44 +127,41 @@ class DriveTree:
 
         # =========== debug code ===========
         # just to keep local query to not request files every run
-        if not os.path.exists('folders.dat'):
-            print('Requesting folders')
-            #=== changing files request ===
-            query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
-            fields = 'nextPageToken, files(name, id, parents, mimeType)'
-            folders_metadata = []
-            pageToken = None
-            while True:
-                result = self.service.files().list(q=query,\
-                                                fields=fields,\
-                                                pageToken=pageToken,\
-                                                pageSize=1000).execute()
-                folders_metadata += result.get('files', [])
-                pageToken = result.get('nextPageToken')
-                if not pageToken:
-                    break
-            with open('folders.dat', 'wb') as f:
-                pickle.dump(folders_metadata, f, pickle.HIGHEST_PROTOCOL)
-        else:
-            with open('folders.dat', 'rb') as f:
-                folders_metadata = pickle.load(f)
+        # if not os.path.exists('folders.dat'):
+        #     query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
+        #     fields = 'nextPageToken, files(name, id, parents, mimeType)'
+        #     folders_metadata = []
+        #     pageToken = None
+        #     while True:
+        #         result = self.service.files().list(q=query,\
+        #                                         fields=fields,\
+        #                                         pageToken=pageToken,\
+        #                                         pageSize=1000).execute()
+        #         folders_metadata += result.get('files', [])
+        #         pageToken = result.get('nextPageToken')
+        #         if not pageToken:
+        #             break
+        #     with open('folders.dat', 'wb') as f:
+        #         pickle.dump(folders_metadata, f, pickle.HIGHEST_PROTOCOL)
+        # else:
+        #     with open('folders.dat', 'rb') as f:
+        #         folders_metadata = pickle.load(f)
         # =========== debug code ===========
 
         # =========== real code ===========
-        # print('Requesting files')
-        # query = 'trashed = false'
-        # folders = []
-        # pageToken = None
-        # while True:
-        #     fields = 'nextPageToken, files(name, id, mimeType, parents, shared)'
-        #     result = self.service.files().list(q=query,\
-        #                                        fields=fields,\
-        #                                        pageToken=pageToken,\
-        #                                        pageSize=1000).execute()
-        #     files_metadata = files_metadata + result.get('files', [])
-        #     pageToken = result.get('nextPageToken')
-        #     if not pageToken:
-        #         break
+        query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
+        folders_metadata = []
+        pageToken = None
+        while True:
+            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            result = self.service.files().list(q=query,\
+                                               fields=fields,\
+                                               pageToken=pageToken,\
+                                               pageSize=1000).execute()
+            folders_metadata += result.get('files', [])
+            pageToken = result.get('nextPageToken')
+            if not pageToken:
+                break
         # =========== real code ===========
         # just the folders vector, will be converted to hash bellow
         folders = [f for f in folders_metadata\
@@ -264,6 +261,9 @@ class DriveTree:
                     parents_query[j] += ' or ' + adding
                     i += 1
                 parents_query[j] += ')'
+            else:
+                print('no folders found')
+                return()
             fields = 'nextPageToken, files(name, id, parents, mimeType)'
             pageTokens = [None] * len(parents_query)
             files_metadata = []

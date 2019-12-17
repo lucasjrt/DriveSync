@@ -132,8 +132,6 @@ class ActionManager:
         if not dir_path:
             dir_path = '/'
 
-        print('Making directory with name "%s" in %s' %(dir_name, dir_path))
-
         parent = self.drive_tree.get_node_from_path(dir_path)
         if not parent:
             print(dir_path, 'not found')
@@ -141,13 +139,25 @@ class ActionManager:
                          'mimeType': TYPES['folder'],
                          'parents': [parent.get_id()]}
         file1 = self.service.files().create(body=file_metadata,
-                                            # media_body=media,
                                             fields='id, name, mimeType, parents').execute()
         DriveFile(parent, file1)
-        print('name:', file1['name'], 'id:', file1['id'])
 
     def move(self, origin, dest):
         print('Moving', origin, 'to', dest)
+        origin_node = self.drive_tree.get_node_from_path(origin)
+        if not origin_node:
+            print('"', origin, '" not found', sep='')
+            return
+        dest_node = self.drive_tree.get_node_from_path(dest)
+        if not dest_node:
+            print('"', dest, '" not found', sep='')
+            return
+        self.service.files().update(fileId=origin_node.get_id(),
+                                    addParents=dest_node.get_id(),
+                                    removeParents=origin_node.get_parent().get_id(),
+                                    fields='id, parents').execute()
+        origin_node.set_parent(dest_node)
+        self.drive_tree.save_to_file()
 
     def open_in_browser(self):
         pass
@@ -165,13 +175,29 @@ class ActionManager:
         self.drive_tree.save_to_file()
 
     def rm(self, file_name, force_remove=False, trash_remove=False):
+        '''Function that deletes or move to trash a the File "file_name".
+        :param file_name: name of the file under operation.
+        :type file_name: str.
+        :param force_remove: If True, the file is just deleted permanently without
+        being sent to trash.
+        :type force_remove: bool.
+        :param trash_remove: Sets the removing to happen in trash instead of MyDrive
+        (Removing from trash deletes the file permanently).
+        :type trash_remove: bool.
+        '''
         if not trash_remove:
             node = self.drive_tree.get_node_from_path(file_name)
             if not node:
                 print(file_name, 'not found')
                 return
             if force_remove:
-                self.service.files().delete(fileId=node.get_id()).execute()
+                sure = input('Are you sure you want to delete "%s" permanenlty? (y/n)'
+                             % (node.get_name()))
+                if sure.lower() == 'y':
+                    self.service.files().delete(fileId=node.get_id()).execute()
+                    print('File deleted')
+                else:
+                    print('Aborted')
             else:
                 self.service.files().update(fileId=node.get_id(),
                                             body={'trashed': True}).execute()
@@ -189,7 +215,13 @@ class ActionManager:
                         return
                     deleting_file = (file1['name'], file1['id'])
             if deleting_file:
-                self.service.files().delete(fileId=deleting_file[1]).execute()
+                sure = input('Are you sure you want to delete %s permanenlty? (y/n)'
+                             % (node.get_name()))
+                if sure.lower() == 'y':
+                    self.service.files().delete(fileId=deleting_file[1]).execute()
+                    print('File deleted')
+                else:
+                    print('Aborted')
             else:
                 print('"', file_name, '" not found in trash', sep='')
 

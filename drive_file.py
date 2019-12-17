@@ -96,3 +96,10 @@ class DriveFile:
 
     def set_name(self, name):
         self.name = name
+
+    def set_parent(self, parent):
+        if self.parent:
+            self.parent.remove_child(self)
+        parent.add_child(self)
+        self.parent = parent
+        self.level = parent.get_level() + 1
