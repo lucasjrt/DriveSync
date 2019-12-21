@@ -36,14 +36,17 @@ HELPS = \
     ],
 
     #Synchronizer
-    'start': ['''Starts the process that will keep the selected folder \
+    'pause': ['''Pauses sync without stoping the execution of jds and can be resumed
+                 with jds resume'''],
+    'resume': ['''Return synchronizing after a pause'''],
+    'start': ['''Starts the process that will keep the selected folder
                  synchronized with Google Drive folder'''],
     'stop': ['''Stops syncronizing the drive'''],
 
     #Options
-    'add-blacklist': ['''Adds one or more files to the blacklist and enables blacklist if off. \
+    'add-blacklist': ['''Adds one or more files to the blacklist and enables blacklist if off.
                       If no files are given it toggles blacklist enabled'''],
-    'add-whitelist': ['''Adds one or more files to the whitelist and enables whitelist if off.\
+    'add-whitelist': ['''Adds one or more files to the whitelist and enables whitelist if off.
                       If no files are given it toggles whitelist enabled'''],
     'clear-cache': ['''Clear the local cache from drive files'''],
     'clear-mirror': ['''Clear the local mirror from drive files'''],
@@ -66,16 +69,16 @@ COMMANDS = \
         '-a, --file_status': {'help': '''Shows file status'''},
         '-m, --move': {'help': '''Move a folder in drive'''},
         '-O, --open_in_drive': {'help':
-                                '''Opens a browser with the selected file or folder,\
+                                '''Opens a browser with the selected file or folder,
                                 root if nothing specified'''},
     },
     'sync':
     {
         '-b, --blacklist': {'help':
-                            '''Select specific files or folders to not sync \
+                            '''Select specific files or folders to not sync
                             (can't be enabled at the same time as whitelist)'''},
         '-F, --force_sync': {'help':
-                             '''Forces a sync before the timing, when the command is executed,\
+                             '''Forces a sync before the timing, when the command is executed,
                              the timer resets to the settings.yaml timing'''},
         '--get_sync_progress': {'help': '''Display the sync status'''},
         '-p, --pause_sync': {'help': '''Pause drive sync'''},
@@ -85,7 +88,7 @@ COMMANDS = \
                       '''Start sync the specified file, if None, the current file is synced'''},
         '-S, --stop': {'help': '''Stop sync'''},
         '-w, --whitelist': {'help':
-                            '''Select specific files or folders to sync \
+                            '''Select specific files or folders to sync
                             (can't be enabled at the same time as blacklist)'''}
     },
     'configurations':

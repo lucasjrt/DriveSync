@@ -11,20 +11,36 @@ class DriveFile:
         self.name = file_struct['name']
         self.children = []
         self.mime = file_struct['mimeType']
+        self.sequence_number = None # this will treat the multiple files with the same name problem
         if parent:
             self.level = parent.get_level() + 1
             parent.add_child(self)
         else:
             self.level = 0
 
-    def add_child(self, children):
-        self.children.append(children)
+    def add_child(self, child):
+        greatest_sequence = 0
+        for node in self.children:
+            if node.get_name() == child.get_name():
+                sequence = node.get_sequence()
+                if sequence:
+                    if greatest_sequence < sequence:
+                        greatest_sequence = sequence
+                else:
+                    node.set_sequence(0)
+
+        child.set_sequence(greatest_sequence + 1)
+        self.children.append(child)
 
     def download(self, destination, service, recursive=True):
         destination = os.path.abspath(destination)
 
         if self.mime == TYPES['folder']:
             folder_path = destination + self.get_path()
+            print('folder path:', folder_path)
+            if self.namesakes():
+                folder_path = folder_path[:-1] + ' (' + str(self.sequence_number) + ')/'
+            print('new folder path:', folder_path)
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             print('Progress %s: 100%%' % self.name)
@@ -55,7 +71,10 @@ class DriveFile:
         if not os.path.exists(save_path):
             os.mkdir(save_path)
 
-        fh = io.FileIO(save_path + file1['name'], 'wb')
+        file_name = save_path + file1['name']
+        if self.namesakes():
+            file_name += ' (' + str(self.sequence_number) + ')'
+        fh = io.FileIO(file_name, 'wb')
         downloader = MediaIoBaseDownload(fh, request)
 
         done = False
@@ -93,8 +112,21 @@ class DriveFile:
             is_folder = ''
         return self.parent.get_path() + self.name + is_folder
 
-    def remove_child(self, children):
-        self.children.remove(children)
+    def get_sequence(self):
+        return self.sequence_number
+
+    def namesakes(self):
+        '''Return the amount of files in the same parent
+        that has the same name self does
+        '''
+        namesakes = 0
+        for brother in self.parent.get_children():
+            if brother.get_name() == self.name and brother is not self:
+                namesakes += 1
+        return namesakes
+
+    def remove_child(self, child):
+        self.children.remove(child)
 
     def set_name(self, name):
         self.name = name
@@ -105,3 +137,12 @@ class DriveFile:
         parent.add_child(self)
         self.parent = parent
         self.level = parent.get_level() + 1
+
+    def set_sequence(self, number):
+        self.sequence_number = number
+
+    def __str__(self):
+        return self.name + ' <-> ' + self.id
+
+    def __repr__(self):
+        return self.name + ' <-> ' + self.id

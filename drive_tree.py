@@ -42,50 +42,61 @@ class DriveTree:
                     return ret
         return None
 
-    def get_closest_node_from_path(self, path):
+    def get_closest_nodes_from_path(self, path):
+        '''Returns a list of all the nodes that are close to the path,
+        of the local existing tree. It's a list because it's possible
+        to have more than one file with the same name under the same
+        parent, as it's not possible to distinguish them by using a 
+        path string.
+        '''
+        if path in ['root', '/root', '/root/', 'root/', '/']:
+            return [self.root], ''
         path_list = [p for p in path.split('/') if p]
-        if not path_list or path_list[0] != 'root':
-            path_list.insert(0, 'root')
-
-        current_node = self.root
+        current_nodes = [self.root]
         depth = 0
         for path1 in path_list:
             last_depth = depth
-            for node in current_node.get_children():
-                if path1 == node.get_name():
-                    current_node = node
-                    depth += 1
-                    break
+            for node in list(current_nodes):
+                for child in node.get_children():
+                    if path1 == child.get_name():
+                        current_nodes.append(child)
+                        if depth == last_depth:
+                            depth += 1
+                current_nodes.remove(node)
             if depth == last_depth:
                 break
-        return current_node, '/'.join(path_list[depth:])
 
-    def get_node_from_path(self, path, exclusive=True):
-        '''Creates a path to reach the node adding all the "sibblings" to the tree
-        if exclusive is false'''
-        closest_node, remaining_path = self.get_closest_node_from_path(path)
+        return current_nodes, '/'.join(path_list[depth:])
+
+    def get_nodes_from_path(self, path, exclusive=True):
+        '''It will return a list of nodes that fits the path. If exclusive is false,
+        all of the files that are in the same parent will be added to the tree.
+        '''
+        closest_nodes, remaining_path = self.get_closest_nodes_from_path(path)
+        print('Closest nodes:', closest_nodes)
+        print('Remaining path:', remaining_path)
+        print('Exclusive:', exclusive)
+        print('Remaining path:', remaining_path)
         if remaining_path:
             path_list = [p for p in remaining_path.split('/') if p]
-            if path_list[0] != 'root':
-                path_list.insert(0, 'root')
-
-            next_node = closest_node
+            fields = 'files(name, id, mimeType, parents)'
             for p in path_list:
-                file_list = self.service.files().list(q="'%s' in parents and trashed = false"
-                                                      % closest_node.get_id(),
-                                                      fields='files(name, id, mimeType, parents)')\
-                                                      .execute().get('files', [])
-                for file1 in file_list:
-                    if (file1['name'] == p or not exclusive) \
-                    and not self.find_file_in_parent(closest_node, file1['id']):
-                        DriveFile(closest_node, file1)
-                    if file1['name'] == p:
-                        next_node = self.find_file_in_parent(closest_node, file1['id'])
-                if next_node == closest_node and p != 'root':
-                    return None
-                closest_node = next_node
+                for node in list(closest_nodes):
+                    file_list = self.service.files().list(q="'%s' in parents and trashed = false"
+                                                          % node.get_id(),
+                                                          fields=fields)\
+                                                          .execute().get('files', [])
+                    for file1 in file_list:
+                        if file1['name'] == p:
+                            closest_nodes.append(DriveFile(node, file1))
+                        elif not exclusive\
+                        and not self.find_file_in_parent(node, file1['id']):
+                            DriveFile(node, file1)
+                    closest_nodes.remove(node)
+                    if not closest_nodes:
+                        return None
         self.save_to_file()
-        return closest_node
+        return closest_nodes
 
     def get_path_from_id(self, fileId):
         file1 = self.service.files().get(fileId=fileId,

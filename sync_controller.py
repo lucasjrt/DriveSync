@@ -32,8 +32,19 @@ class SyncController:
     def get_sync_progress(self):
         pass
 
-    def pause_sync(self):
-        pass
+    def pause(self):
+        with open(PID_FILE, 'r') as pid:
+            try:
+                flock(pid, LOCK_EX | LOCK_NB)
+                flock(pid, LOCK_UN)
+                print('No instance of JRT Drive Sync is running')
+            except BlockingIOError:
+                try:
+                    target_pid = int(pid.read())
+                    print('Sending signal to', target_pid)
+                    os.kill(target_pid, signal.SIGUSR1)
+                except ValueError:
+                    print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
     def resume_sync(self):
         pass
@@ -63,9 +74,12 @@ class SyncController:
                 print('No instance of JRT Drive Sync is running')
             except BlockingIOError:
                 print('Stopping')
-                target_pid = int(pid.read())
-                print('Sending signal to', target_pid)
-                os.kill(target_pid, signal.SIGTERM)
+                try:
+                    target_pid = int(pid.read())
+                    print('Sending signal to', target_pid)
+                    os.kill(target_pid, signal.SIGTERM)
+                except ValueError:
+                    print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
     def sync_mirror(self, filter_enabled=True):
         self.mirror_tree.load_complete_tree(filter_enabled=filter_enabled)

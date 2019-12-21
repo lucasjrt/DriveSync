@@ -31,6 +31,7 @@ class SyntaxAnalyzer:
         # Sync ops
         start_parser = subparsers.add_parser('start', help=HELPS['start'][0], add_help=False)
         subparsers.add_parser('stop', help=HELPS['stop'][0])
+        subparsers.add_parser('pause', help=HELPS['pause'][0])
 
         self.add_download_parser(download_parser)
         self.add_list_parsers(list_parser)
@@ -93,11 +94,11 @@ class SyntaxAnalyzer:
 
         #Sync
         elif args.command == 'start':
-            #sync_controller.start(args.start_target)
-            #am.download_cache()
-            sc.download_mirror()
+            sc.start(args.start_target)
         elif args.command == 'stop':
             sc.stop()
+        elif args.command == 'pause':
+            sc.pause()
 
         #Options
         # -sc

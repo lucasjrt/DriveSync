@@ -1,5 +1,4 @@
 import os
-import sys
 
 from datetime import datetime
 from ruamel_yaml import YAML
@@ -89,5 +88,5 @@ def load_settings():
     return DEFAULT_SETTINGS
 
 def log(*message):
-    print("[", datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "]: ", *message, sep='')
-    sys.stdout.flush()
+    print("[", datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "]: ", sep='', end='')
+    print(*message, flush=True)

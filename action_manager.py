@@ -26,7 +26,7 @@ class ActionManager:
             print('Empty cache')
 
     def download(self, file1, destination=DEFAULT_DOWNLOAD_PATH):
-        node = self.drive_tree.get_node_from_path(file1)
+        node = self.drive_tree.get_nodes_from_path(file1)
         node.download(destination, self.service)
 
     def download_cache(self):
@@ -77,7 +77,7 @@ class ActionManager:
 
     # TODO: set this to allow multiple files with the same name
     def download_from_path(self, drive_path, destination, recursive=True):
-        node = self.drive_tree.get_node_from_path(drive_path)
+        node = self.drive_tree.get_nodes_from_path(drive_path)
         if not node:
             print(drive_path, 'not found')
             return
@@ -109,7 +109,7 @@ class ActionManager:
                 print(file1)
             return
 
-        node = self.drive_tree.get_node_from_path(path, exclusive=False)
+        node = self.drive_tree.get_nodes_from_path(path, exclusive=False)
         if not node:
             print('File not found')
             return
@@ -132,7 +132,7 @@ class ActionManager:
         if not dir_path:
             dir_path = '/'
 
-        parent = self.drive_tree.get_node_from_path(dir_path)
+        parent = self.drive_tree.get_nodes_from_path(dir_path)
         if not parent:
             print(dir_path, 'not found')
         file_metadata = {'name': dir_name,
@@ -144,11 +144,11 @@ class ActionManager:
 
     def move(self, origin, dest):
         print('Moving', origin, 'to', dest)
-        origin_node = self.drive_tree.get_node_from_path(origin)
+        origin_node = self.drive_tree.get_nodes_from_path(origin)
         if not origin_node:
             print('"', origin, '" not found', sep='')
             return
-        dest_node = self.drive_tree.get_node_from_path(dest)
+        dest_node = self.drive_tree.get_nodes_from_path(dest)
         if not dest_node:
             print('"', dest, '" not found', sep='')
             return
@@ -164,7 +164,7 @@ class ActionManager:
 
     def rename(self, file_path, new_name):
         print('Renaming', file_path, 'to', new_name)
-        node = self.drive_tree.get_node_from_path(file_path)
+        node = self.drive_tree.get_nodes_from_path(file_path)
         if not node:
             print('File not found')
             return
@@ -186,7 +186,7 @@ class ActionManager:
         :type trash_remove: bool.
         '''
         if not trash_remove:
-            node = self.drive_tree.get_node_from_path(file_name)
+            node = self.drive_tree.get_nodes_from_path(file_name)
             if not node:
                 print(file_name, 'not found')
                 return
