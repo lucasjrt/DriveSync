@@ -1,5 +1,4 @@
 import os
-import sys
 
 from datetime import datetime
 from ruamel_yaml import YAML
@@ -12,6 +11,9 @@ def add_slashes(files):
             files[i] = '/' + files[i]
         if w[-1] != '/':
             files[i] = files[i] + '/'
+
+    for i in range(len(files)):
+        pass
     return files
 
 def bytes_to_human(bytes1, binary=False):
@@ -86,5 +88,5 @@ def load_settings():
     return DEFAULT_SETTINGS
 
 def log(*message):
-    print("[", datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "]: ", *message, sep='')
-    sys.stdout.flush()
+    print("[", datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "]: ", sep='', end='')
+    print(*message, flush=True)

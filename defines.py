@@ -6,6 +6,8 @@ CLIENT_SECRET_FILE = APP_PATH + '/client_secrets.json'
 CREDENTIALS_FILE = APP_PATH + '/credentials.json'
 DEFAULT_DRIVE_SYNC_DIRECTORY = os.path.join(os.environ['HOME'], 'GoogleDrive')
 DEFAULT_DOWNLOAD_PATH = os.path.join(os.environ['HOME'], 'Drive_downloads')
+DEFAULT_DOWNLOAD_CACHE = APP_PATH + '/cache'
+DEFAULT_DOWNLOAD_MIRROR = APP_PATH + '/mirror'
 LOG_FILE = APP_PATH + '/sync.log'
 PID_FILE = APP_PATH + '/.jrt_drive_sync.pid'
 DEFAULT_SETTINGS_FILE = APP_PATH + '/config.yaml'
@@ -16,7 +18,9 @@ HELPS = \
 {
     #Operations
     'download': ['''Download a folder or file from drive to local
-    storage (Default: ~/Drive_download'''],
+    storage (Default: ~/Drive_downloads'''],
+    'download-cache': ['''Download the cache tree to the local machine'''],
+    'download-mirror': ['''Download the mirror tree to the local machine'''],
     'list': [
         '''List drive root or if specified, a folder''',
         '''List trash'''
@@ -27,21 +31,23 @@ HELPS = \
     'restore': ['''Restores a file from trash'''],
     'remove': [
         '''Move a drive file to trash (see [%(prog)s rm -h] for extra information)''',
-        '''Delete the file permanently without moving to trash'''
+        '''Delete the file permanently without moving to trash''',
+        '''Sets the deletion to be on the trash, instead of MyDrive files'''
     ],
 
     #Synchronizer
-    'start': ['''Starts the process that will keep the selected folder \
+    'pause': ['''Pauses sync without stoping the execution of jds and can be resumed
+                 with jds resume'''],
+    'resume': ['''Return synchronizing after a pause'''],
+    'start': ['''Starts the process that will keep the selected folder
                  synchronized with Google Drive folder'''],
     'stop': ['''Stops syncronizing the drive'''],
 
     #Options
-    'add-blacklist': ['''Adds one or more files to the blacklist. If no files are given,\
-                      it switches blacklist on or off (If blacklist is enabled, automatically\
-                      disables it)'''],
-    'add-whitelist': ['''Adds one or more files to the whitelist. If no files are given,\
-                      it switches whitelist on or off (If whitelist is enabled, automatically\
-                      disables it.)'''],
+    'add-blacklist': ['''Adds one or more files to the blacklist and enables blacklist if off.
+                      If no files are given it toggles blacklist enabled'''],
+    'add-whitelist': ['''Adds one or more files to the whitelist and enables whitelist if off.
+                      If no files are given it toggles whitelist enabled'''],
     'clear-cache': ['''Clear the local cache from drive files'''],
     'clear-mirror': ['''Clear the local mirror from drive files'''],
     'remove-blacklist': ['''Removes the given files from blacklist'''],
@@ -63,16 +69,16 @@ COMMANDS = \
         '-a, --file_status': {'help': '''Shows file status'''},
         '-m, --move': {'help': '''Move a folder in drive'''},
         '-O, --open_in_drive': {'help':
-                                '''Opens a browser with the selected file or folder,\
+                                '''Opens a browser with the selected file or folder,
                                 root if nothing specified'''},
     },
     'sync':
     {
         '-b, --blacklist': {'help':
-                            '''Select specific files or folders to not sync \
+                            '''Select specific files or folders to not sync
                             (can't be enabled at the same time as whitelist)'''},
         '-F, --force_sync': {'help':
-                             '''Forces a sync before the timing, when the command is executed,\
+                             '''Forces a sync before the timing, when the command is executed,
                              the timer resets to the settings.yaml timing'''},
         '--get_sync_progress': {'help': '''Display the sync status'''},
         '-p, --pause_sync': {'help': '''Pause drive sync'''},
@@ -82,7 +88,7 @@ COMMANDS = \
                       '''Start sync the specified file, if None, the current file is synced'''},
         '-S, --stop': {'help': '''Stop sync'''},
         '-w, --whitelist': {'help':
-                            '''Select specific files or folders to sync \
+                            '''Select specific files or folders to sync
                             (can't be enabled at the same time as blacklist)'''}
     },
     'configurations':

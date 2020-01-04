@@ -7,41 +7,24 @@ from utils import load_settings
 from drive_file import DriveFile
 
 class DriveTree:
-    def __init__(self, drive, save_path):
+    def __init__(self, service, save_path, root):
         self.save_path = save_path
-        if drive is None:
+        if service is None:
             return
-        self.drive = drive
-        print('Requesting root')
-        root_file = drive.CreateFile({'id': drive.GetAbout()['rootFolderId']})
-        self.root = DriveFile(None, root_file)
-        self.total_storage = drive.GetAbout()['quotaBytesTotal']
+        self.root = DriveFile(None, root)
+        self.service = service
+        self.folders_hash = {}
+        self.files_hash = {}
 
-    def add_file(self, parent, file_struct):
-        if not parent:
-            return None
-
-        cnode = DriveFile(parent, file_struct)
-        parent.add_child(cnode)
-        return True
-
-    def breadth_find_file(self, node_id):
-        if node_id == self.root.get_id():
-            return self.root
-        return self.breadth_find_file_in_parent(self.root, node_id)
-
-    def breadth_find_file_in_parent(self, parent, node_id):
-        q = []
-        discovered = []
-        q.insert(0, parent)
-        while q:
-            v = q.pop()
-            if v.get_id() == node_id:
-                return v
-            for child in v.get_children():
-                if child not in discovered:
-                    discovered.append(child)
-                    q.insert(0, child)
+    def download(self, destination):
+        '''Download all the files from the tree'''
+        if not os.path.exists(destination):
+            os.mkdir(destination)
+        nodes = self.get_root().get_children()
+        while nodes:
+            node = nodes.pop(0)
+            nodes = nodes + node.get_children()
+            node.download(destination, self.service, recursive=False)
 
     def find_file(self, node_id):
         if node_id == self.root.get_id():
@@ -59,73 +42,261 @@ class DriveTree:
                     return ret
         return None
 
-    def get_closest_node_from_path(self, path):
+    def get_closest_nodes_from_path(self, path):
+        '''Returns a list of all the nodes that are close to the path,
+        of the local existing tree. It's a list because it's possible
+        to have more than one file with the same name under the same
+        parent, as it's not possible to distinguish them by using a
+        path string.
+        '''
+        if path in ['root', '/root', '/root/', 'root/', '/']:
+            return [self.root], ''
         path_list = [p for p in path.split('/') if p]
-        if path_list[0] != 'root':
-            path_list.insert(0, 'root')
-
-        current_node = self.root
+        current_nodes = [self.root]
         depth = 0
         for path1 in path_list:
             last_depth = depth
-            for node in current_node.get_children():
-                if path1 == node.get_name():
-                    current_node = node
-                    depth += 1
-                    break
+            for node in list(current_nodes):
+                for child in node.get_children():
+                    if path1 == child.get_name():
+                        current_nodes.append(child)
+                        if depth == last_depth:
+                            depth += 1
+                current_nodes.remove(node)
             if depth == last_depth:
                 break
-        return current_node, '/'.join(path_list[depth:])
 
-    def get_node_from_path(self, path, exclusive=True):
-        '''Creates a path to reach the node adding all the "sibblings" to the tree
-        if exclusive is false'''
-        closest_node, remaining_path = self.get_closest_node_from_path(path)
+        return current_nodes, '/'.join(path_list[depth:])
+
+    def get_nodes_from_path(self, path, exclusive=True):
+        '''It will return a list of nodes that fits the path. If exclusive is false,
+        all of the files that are in the same parent will be added to the tree.
+        '''
+        closest_nodes, remaining_path = self.get_closest_nodes_from_path(path)
         if remaining_path:
             path_list = [p for p in remaining_path.split('/') if p]
-            if path_list[0] != 'root':
-                path_list.insert(0, 'root')
-
-            next_node = closest_node
+            fields = 'files(name, id, mimeType, parents)'
             for p in path_list:
-                file_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
-                                                      % closest_node.get_id()}).GetList()
-                for file1 in file_list:
-                    if (file1['title'] == p or not exclusive) \
-                    and not self.find_file_in_parent(closest_node, file1['id']):
-                        self.add_file(closest_node, file1)
-                    if file1['title'] == p:
-                        next_node = self.find_file_in_parent(closest_node, file1['id'])
-                if next_node == closest_node and p != 'root':
-                    return None
-                closest_node = next_node
-
-            if not closest_node.get_children():
-                children_list = self.drive.ListFile({'q': "'%s' in parents and trashed = false"
-                                                          % closest_node.get_id()}).GetList()
-                for child in children_list:
-                    self.add_file(closest_node, child)
-
+                for node in list(closest_nodes):
+                    file_list = self.service.files().list(q="'%s' in parents and trashed = false"
+                                                          % node.get_id(),
+                                                          fields=fields)\
+                                                          .execute().get('files', [])
+                    for file1 in file_list:
+                        if file1['name'] == p:
+                            closest_nodes.append(DriveFile(node, file1))
+                        elif not exclusive\
+                        and not self.find_file_in_parent(node, file1['id']):
+                            DriveFile(node, file1)
+                    closest_nodes.remove(node)
+                    if not closest_nodes:
+                        return None
         self.save_to_file()
-        return closest_node
+        return closest_nodes
 
-    def get_path_from_id(self, id):
-        file1 = self.drive.CreateFile({'id': id})
+    def get_path_from_id(self, fileId):
+        file1 = self.service.files().get(fileId=fileId,
+                                         fields='name, mimeType, parents').execute()
         isfolder = ''
         if file1['mimeType'] == TYPES['folder']:
             isfolder = '/'
-        if not file1['parents']:
-            return '?' + file1['title']
+        if not 'parents' in file1:
+            return '?' + file1['name']
         parent = file1['parents'][0]
-        if parent['isRoot']:
-            return '/' + file1['title'] + isfolder
+        if parent == self.root.get_id():
+            return '/' + file1['name'] + isfolder
 
-        return self.get_path_from_id(parent['id']) + file1['title'] + isfolder
+        return self.get_path_from_id(parent) + file1['name'] + isfolder
 
     def get_root(self):
         return self.root
 
+    def load_complete_tree(self, filter_enabled=True, complete=True):
+        '''Creates a folder hash table and another non-folder hash table
+        stores nodes in the first hash and the id is the key (e.g. /MyDrive/Books/Fiction)
+        the second one simply stores the file struct and the id is the
+        key (e.g. Star Wars.pdf).
+
+        :param filter_enabled: if whitelist or blacklist is enabled.
+        :type filter_enabled: bool.
+        :param complete: If will link files to tree.
+        :type complete: bool.
+        '''
+        whitelist = blacklist = None
+        if filter_enabled:
+            settings = load_settings()
+            if settings['whitelist-enabled']:
+                whitelist = settings['whitelist-files']
+            elif settings['blacklist-enabled']:
+                blacklist = settings['blacklist-files']
+
+        # =========== debug code ===========
+        # just to keep local query to not request files every run
+        # if not os.path.exists('folders.dat'):
+        #     query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
+        #     fields = 'nextPageToken, files(name, id, parents, mimeType)'
+        #     folders_metadata = []
+        #     pageToken = None
+        #     while True:
+        #         result = self.service.files().list(q=query,\
+        #                                         fields=fields,\
+        #                                         pageToken=pageToken,\
+        #                                         pageSize=1000).execute()
+        #         folders_metadata += result.get('files', [])
+        #         pageToken = result.get('nextPageToken')
+        #         if not pageToken:
+        #             break
+        #     with open('folders.dat', 'wb') as f:
+        #         pickle.dump(folders_metadata, f, pickle.HIGHEST_PROTOCOL)
+        # else:
+        #     with open('folders.dat', 'rb') as f:
+        #         folders_metadata = pickle.load(f)
+        # =========== debug code ===========
+
+        # =========== real code ===========
+        query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
+        folders_metadata = []
+        pageToken = None
+        while True:
+            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            result = self.service.files().list(q=query,\
+                                               fields=fields,\
+                                               pageToken=pageToken,\
+                                               pageSize=1000).execute()
+            folders_metadata += result.get('files', [])
+            pageToken = result.get('nextPageToken')
+            if not pageToken:
+                break
+        # =========== real code ===========
+        # just the folders vector, will be converted to hash bellow
+        folders = [f for f in folders_metadata\
+                   if 'parents' in f]
+        self.root.children = [] # empty tree
+        stack = [] # [metadata]
+        self.folders_hash = {}
+        i = 0 # used to pin the node that is looking for a parent
+        j = 0 # used to pin the next node that will look for the parent
+        while folders or stack:
+            enqueue = None
+            j = 0
+            for folder in folders:
+                if folders[i]['parents'][0] == folder['id']:
+                    enqueue = folders[i]
+                    break
+                j += 1
+
+            if enqueue:
+                stack.append(enqueue)
+                folders.pop(i)
+                if j < i:
+                    i = j
+                else:
+                    i = j - 1
+            elif folders[i]['parents'][0] == self.root.get_id():
+                title = ('/' + folders[i]['name'] + '/')
+                if (blacklist and title in blacklist)\
+                or (whitelist and not any(title in elem for elem in whitelist)):
+                    stack = []
+                    folders.pop(i)
+                    i = 0
+                    continue
+                child = DriveFile(self.root, folders[i])
+                self.folders_hash[folders[i]['id']] = child
+
+                while stack:
+                    item = stack.pop()
+                    title = title + '/' + item['name'] + '/'
+                    if (blacklist and (title in blacklist)) \
+                    or (whitelist and not \
+                    any(elem in title for elem in whitelist)):
+                        stack = []
+                        break
+                    parent = child
+                    child = DriveFile(parent, item)
+                    self.folders_hash[item['id']] = child
+                folders.pop(i)
+                i = 0
+            else:
+                parent_id = folders[i]['parents'][0]
+                if not parent_id in self.folders_hash:
+                    stack = []
+                    folders.pop(i)
+                    i = 0
+                    continue
+                elif filter_enabled:
+                    title = self.folders_hash[parent_id].get_path() + folders[i]['name'] + '/'
+                    if (blacklist and (title in blacklist))\
+                    or (whitelist and not\
+                    any(elem in title for elem in whitelist)):
+                        stack = []
+                        folders.pop(i)
+                        i = 0
+                        continue
+
+                child = DriveFile(self.folders_hash[parent_id], folders[i])
+                self.folders_hash[child.get_id()] = child
+                while stack:
+                    parent = child
+                    item = stack.pop()
+                    if (blacklist and (title in blacklist))\
+                    or (whitelist and not \
+                    any(elem in title for elem in whitelist)):
+                        stack = []
+                        break
+                    child = DriveFile(parent, item)
+                    self.folders_hash[item['id']] = child
+                folders.pop(i)
+                i = 0
+        if complete:
+            if self.folders_hash:
+                parents_query = ['mimeType != \'%s\' and ("%s" in parents'
+                                 % (TYPES['folder'], list(self.folders_hash)[0])]
+                i = 0 # counter
+                j = 0 # index of the list
+                for item in list(self.folders_hash)[1:]:
+                    adding = '"%s" in parents' % item
+                    # 30000 is the max body size before too complex query
+                    if len(' or ' + parents_query[j]) >= 25000:
+                        parents_query[j] += ')'
+                        j += 1
+                        i = 0
+                        parents_query.append('mimeType != \'%s\' and ("%s" in parents'
+                                             % (TYPES['folder'], item))
+                        continue
+                    parents_query[j] += ' or ' + adding
+                    i += 1
+                parents_query[j] += ')'
+            else:
+                print('no folders found')
+                return()
+            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            pageTokens = [None] * len(parents_query)
+            files_metadata = []
+            while True:
+                for i, query in enumerate(parents_query):
+                    if pageTokens[i] != '0':
+                        result = self.service.files().list(q=query,\
+                                                        fields=fields,\
+                                                        pageToken=pageTokens[i],\
+                                                        pageSize=1000).execute()
+                        files_metadata += result.get('files', [])
+                        pageTokens[i] = result.get('nextPageToken')
+                        if not pageTokens[i]:
+                            pageTokens[i] = '0'
+                if all(token == '0' for token in pageTokens):
+                    break
+
+            for metadata in files_metadata:
+                if not metadata['parents'][0] == self.root.get_id():
+                    parent = self.folders_hash[metadata['parents'][0]]
+                else:
+                    if filter_enabled:
+                        continue
+                    parent = self.root
+                DriveFile(parent, metadata)
+
     def load_from_file(self, file_path=None):
+        '''Loads the tree from disk'''
         if not file_path:
             file_path = self.save_path
 
@@ -134,12 +305,17 @@ class DriveTree:
                 return pickle.load(f)
         return self
 
-    def print_folder(self, folder):
-        depth = folder.get_level()
-        prefix = depth * ('  |') + '--'
-        print(prefix, folder.get_name(), '\tid:', folder.get_id(), sep='')
+    def print_folder(self, folder, level=0, depth=None):
+        '''Prints the folder recusrively'''
+        if depth and level == depth:
+            return
+        prefix = level * ('  |') + '--'
+        sequence = ''
+        if folder.get_sequence():
+            sequence = ' (' + str(folder.get_sequence()) + ')'
+        print(prefix, folder.get_name(), sequence, '\tid:', folder.get_id(), sep='')
         for child in folder.get_children():
-            self.print_folder(child)
+            self.print_folder(child, level=level+1, depth=depth)
 
     def print_tree(self):
         self.print_folder(self.root)
@@ -150,6 +326,7 @@ class DriveTree:
             folder.get_parent.removeChildren(folder)
 
     def save_to_file(self, file_path=None):
+        '''Saves the tree to disk'''
         if not file_path:
             file_path = self.save_path
         if not os.path.exists(os.path.split(os.path.abspath(file_path))[0]):
@@ -158,162 +335,3 @@ class DriveTree:
         with open(file_path, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
             f.flush()
-
-    # whitelist and blacklist don't need to require all the files,
-    # only specific files (is it worth it? don't think so. too complex query)
-    # NOTE: blacklist and whitelist works better if in separate if statements
-    def load_complete_tree(self, filter_enabled=True):
-        whitelist = blacklist = None
-        if filter_enabled:
-            settings = load_settings()
-            if settings['whitelist-enabled']:
-                whitelist = settings['whitelist-files']
-            elif settings['blacklist-enabled']:
-                blacklist = settings['blacklist-files']
-
-        if os.path.exists('mirror.dat'):
-            with open('mirror.dat', 'rb') as f:
-                remote_files = pickle.load(f)
-        else:
-            print('Requesting files')
-            # TODO: improve query
-            query = 'trashed = false'
-            remote_files = self.drive.ListFile({'q': query}).GetList()
-            with open('mirror.dat', 'wb') as f:
-                pickle.dump(remote_files, f, pickle.HIGHEST_PROTOCOL)
-
-        metadata = [file1 for file1 in remote_files if file1['parents']]
-
-        self.root.children = []
-        stack = [] # [metadata]
-        nodes = [] # [DriveFile]
-        i = 0 # used to pin the node that is looking for a parent
-        j = 0 # used to pin the next node that will look for the parent
-        def insert_ordered_node(node, nodes):
-            lower_bound = 0
-            upper_bound = len(nodes) - 1
-            # loop to find the position where to insert node
-            while upper_bound - lower_bound > 1:
-                half = (upper_bound + lower_bound) // 2
-                if node.get_id() < nodes[half].get_id():
-                    upper_bound = half
-                else:
-                    lower_bound = half
-            # insert the node to nodes list
-            if node.get_id() < nodes[lower_bound].get_id():
-                nodes.insert(lower_bound, node)
-            else:
-                if node.get_id() < nodes[upper_bound].get_id():
-                    nodes.insert(upper_bound, node)
-                else:
-                    nodes.insert(upper_bound + 1, node)
-
-        total = len(metadata)
-        while metadata or stack:
-            current = len(metadata)
-            if (current % 200) == 0:
-                print('\rGenerating tree: %.2f%%' % (((total - current)/total) * 100), end='')
-            enqueue = None
-            j = 0
-            # find the parent meta to the pinned one
-            for data in metadata:
-                if metadata[i]['parents'][0]['id'] == data['id']:
-                    enqueue = metadata[i]
-                    break
-                j += 1
-
-            # parent is not an object
-            if enqueue:
-                stack.append(enqueue)
-                metadata.pop(i)
-                if j < i:
-                    i = j
-                else:
-                    i = j - 1
-            # parent node is root
-            elif metadata[i]['parents'][0]['id'] == self.root.get_id():
-                title = ('/' + metadata[i]['title'] + '/')
-                if (blacklist and title in blacklist)\
-                or (whitelist and not any(title in elem for elem in whitelist)):
-                    stack = []
-                    metadata.pop(i)
-                    i = 0
-                    continue
-                child = DriveFile(self.root, metadata[i])
-                self.root.add_child(child)
-                # check if nodes is empty, to avoid 'out of bounds'
-                if not nodes:
-                    nodes.append(child)
-                else:
-                    insert_ordered_node(child, nodes)
-
-                while stack:
-                    item = stack.pop()
-                    title = title + '/' + item['title'] + '/'
-                    if (blacklist and (title in blacklist)) \
-                    or (whitelist and not \
-                    any(elem in title for elem in whitelist)):
-                        stack = []
-                        break
-                    parent = child
-                    child = DriveFile(parent, item)
-                    parent.add_child(child)
-                    insert_ordered_node(child, nodes)
-
-                metadata.pop(i)
-                i = 0
-            # parent object exists
-            else:
-                parent_id = metadata[i]['parents'][0]['id']
-                lower_bound = 0
-                upper_bound = len(nodes) - 1
-                half = 0
-
-                # set the position of the value to any of the bounds
-                while upper_bound >= lower_bound:
-                    half = (lower_bound + upper_bound) // 2
-                    if nodes[half].get_id() == parent_id:
-                        break
-                    elif parent_id < nodes[half].get_id():
-                        upper_bound = half - 1
-                    else:
-                        lower_bound = half + 1
-                    half = (lower_bound + upper_bound) // 2
-
-                if not nodes:
-                    stack = []
-                    metadata.pop(i)
-                    i = 0
-                    continue
-                elif filter_enabled:
-                    title = nodes[half].get_path() + metadata[i]['title'] + '/'
-                    if (blacklist and (title in blacklist)) \
-                    or (whitelist and not \
-                    any(elem in title for elem in whitelist)):
-                        stack = []
-                        metadata.pop(i)
-                        i = 0
-                        continue
-                if nodes[half].get_id() != parent_id:
-                    metadata.pop(i)
-                    stack = []
-                    i = 0
-                    continue
-
-                child = DriveFile(nodes[half], metadata[i])
-                nodes[half].add_child(child)
-                insert_ordered_node(child, nodes)
-                while stack:
-                    parent = child
-                    item = stack.pop()
-                    if (blacklist and (title in blacklist))\
-                    or (whitelist and not \
-                    any(elem in title for elem in whitelist)):
-                        stack = []
-                        break
-                    child = DriveFile(parent, item)
-                    insert_ordered_node(child, nodes)
-                    parent.add_child(child)
-                metadata.pop(i)
-                i = 0
-        print('\rGenerating tree: 100%      ')

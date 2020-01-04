@@ -3,19 +3,15 @@ import signal
 import subprocess
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
 
-from defines import DEFAULT_DRIVE_SYNC_DIRECTORY, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
-from mime_names import TYPES
+from defines import DEFAULT_DOWNLOAD_MIRROR, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
 from drive_tree import DriveTree
 
 class SyncController:
-    def __init__(self, drive, am):
-        self.mirror_tree = DriveTree(drive, TREE_MIRROR).load_from_file()
+    def __init__(self, service, am, root):
+        self.mirror_tree = DriveTree(service, TREE_MIRROR, root).load_from_file()
         self.am = am
 
     # Remote action manager (local action manager is located at action_manager.py)
-    def blacklist(self):
-        print('Blacklisting')
-
     def clear_mirror(self):
         if os.path.exists(TREE_MIRROR):
             os.remove(TREE_MIRROR)
@@ -24,22 +20,11 @@ class SyncController:
             print('Empty mirror')
 
     def download_mirror(self):
-        '''Download all the files from the mirror tree'''
-        path = DEFAULT_DRIVE_SYNC_DIRECTORY
-        print('saving at:', path)
-        if not os.path.exists(path):
-            os.mkdir(path)
-        nodes = self.mirror_tree.get_root().get_children()
-        while nodes:
-            node = nodes[0]
-            nodes = nodes + node.get_children()
-            if node.get_mime() == TYPES['folder']:
-                if not os.path.exists(path + node.get_path()):
-                    os.mkdir(path + node.get_path())
-            else:
-                destination = path + '/' + node.get_parent().get_path()
-                self.am.download_from_node(node, destination, recursive=False)
-            print(nodes.pop(0).get_name(), 'downloaded')
+        # '''Download all the files from the mirror tree'''
+        self.mirror_tree.download(DEFAULT_DOWNLOAD_MIRROR)
+
+    def get_service(self):
+        return self.am.get_service()
 
     def force_sync(self):
         pass
@@ -47,16 +32,21 @@ class SyncController:
     def get_sync_progress(self):
         pass
 
-    def pause_sync(self):
-        pass
+    def pause(self):
+        with open(PID_FILE, 'r') as pid:
+            try:
+                flock(pid, LOCK_EX | LOCK_NB)
+                flock(pid, LOCK_UN)
+                print('No instance of JRT Drive Sync is running')
+            except BlockingIOError:
+                try:
+                    target_pid = int(pid.read())
+                    print('Sending signal to', target_pid)
+                    os.kill(target_pid, signal.SIGUSR1)
+                except ValueError:
+                    print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
     def resume_sync(self):
-        print('Resuming sync')
-
-    def set_autostart(self):
-        pass
-
-    def set_sync_delay(self):
         pass
 
     def show_mirror(self):
@@ -84,14 +74,16 @@ class SyncController:
                 print('No instance of JRT Drive Sync is running')
             except BlockingIOError:
                 print('Stopping')
-                target_pid = int(pid.read())
-                print('Sending signal to', target_pid)
-                os.kill(target_pid, signal.SIGTERM)
+                try:
+                    target_pid = int(pid.read())
+                    print('Sending signal to', target_pid)
+                    os.kill(target_pid, signal.SIGTERM)
+                except ValueError:
+                    print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
-    def sync_mirror(self):
-        self.mirror_tree.load_complete_tree()
+    def sync_mirror(self, filter_enabled=True):
+        self.mirror_tree.load_complete_tree(filter_enabled=filter_enabled)
         self.mirror_tree.save_to_file()
-        print('Mirror synced')
 
     def whitelist(self):
         pass
