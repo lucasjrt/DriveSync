@@ -21,26 +21,24 @@ class DriveFile:
     def add_child(self, child):
         greatest_sequence = 0
         for node in self.children:
-            if node.get_name() == child.get_name():
+            if node.get_name() == child.get_name()\
+            and node.get_id() != child.get_id():
                 sequence = node.get_sequence()
                 if sequence:
                     if greatest_sequence < sequence:
                         greatest_sequence = sequence
                 else:
                     node.set_sequence(0)
-
-        child.set_sequence(greatest_sequence + 1)
+                child.set_sequence(greatest_sequence + 1)
         self.children.append(child)
 
     def download(self, destination, service, recursive=True):
         destination = os.path.abspath(destination)
-
         if self.mime == TYPES['folder']:
             folder_path = destination + self.get_path()
-            print('folder path:', folder_path)
             if self.namesakes():
-                folder_path = folder_path[:-1] + ' (' + str(self.sequence_number) + ')/'
-            print('new folder path:', folder_path)
+                if self.sequence_number and self.sequence_number > 0:
+                    folder_path = folder_path[:-1] + ' (' + str(self.sequence_number) + ')/'
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             print('Progress %s: 100%%' % self.name)
@@ -86,6 +84,7 @@ class DriveFile:
         print("\rProgress %s: 100%%" % file1['name'])
 
     def get_children(self):
+        self.children.sort(key=lambda s: s.get_name())
         return self.children
 
     def get_id(self):
@@ -120,8 +119,8 @@ class DriveFile:
         that has the same name self does
         '''
         namesakes = 0
-        for brother in self.parent.get_children():
-            if brother.get_name() == self.name and brother is not self:
+        for sibling in self.parent.get_children():
+            if sibling.get_name() == self.name and sibling is not self:
                 namesakes += 1
         return namesakes
 
@@ -140,6 +139,21 @@ class DriveFile:
 
     def set_sequence(self, number):
         self.sequence_number = number
+
+    def update_children(self, service):
+        '''Updates the children of a node with the drive files'''
+        children = service.files().list(q='"%s" in parents and trashed = false' % self.id,
+                                        fields='files(name, parents, mimeType, id)')\
+                                        .execute().get('files', [])
+        remote_ids = [f['id'] for f in children]
+        local_ids = [child.get_id() for child in self.children]
+        for child in self.children:
+            if child.get_id() not in remote_ids:
+                self.children.remove(child)
+
+        for metadata in children:
+            if metadata['id'] not in local_ids:
+                DriveFile(self, metadata)
 
     def __str__(self):
         return self.name + ' <-> ' + self.id

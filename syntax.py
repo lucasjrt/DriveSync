@@ -64,7 +64,6 @@ class SyntaxAnalyzer:
             sc = SyncController(None, am, None)
 
         config_manager = ConfigManager()
-        print('Settings loaded\n')
 
         #Operations
         if args.command == 'download':

@@ -46,7 +46,7 @@ class DriveTree:
         '''Returns a list of all the nodes that are close to the path,
         of the local existing tree. It's a list because it's possible
         to have more than one file with the same name under the same
-        parent, as it's not possible to distinguish them by using a 
+        parent, as it's not possible to distinguish them by using a
         path string.
         '''
         if path in ['root', '/root', '/root/', 'root/', '/']:
@@ -73,10 +73,6 @@ class DriveTree:
         all of the files that are in the same parent will be added to the tree.
         '''
         closest_nodes, remaining_path = self.get_closest_nodes_from_path(path)
-        print('Closest nodes:', closest_nodes)
-        print('Remaining path:', remaining_path)
-        print('Exclusive:', exclusive)
-        print('Remaining path:', remaining_path)
         if remaining_path:
             path_list = [p for p in remaining_path.split('/') if p]
             fields = 'files(name, id, mimeType, parents)'
@@ -309,13 +305,17 @@ class DriveTree:
                 return pickle.load(f)
         return self
 
-    def print_folder(self, folder):
+    def print_folder(self, folder, level=0, depth=None):
         '''Prints the folder recusrively'''
-        depth = folder.get_level()
-        prefix = depth * ('  |') + '--'
-        print(prefix, folder.get_name(), '\tid:', folder.get_id(), sep='')
+        if depth and level == depth:
+            return
+        prefix = level * ('  |') + '--'
+        sequence = ''
+        if folder.get_sequence():
+            sequence = ' (' + str(folder.get_sequence()) + ')'
+        print(prefix, folder.get_name(), sequence, '\tid:', folder.get_id(), sep='')
         for child in folder.get_children():
-            self.print_folder(child)
+            self.print_folder(child, level=level+1, depth=depth)
 
     def print_tree(self):
         self.print_folder(self.root)
