@@ -83,6 +83,17 @@ class DriveFile:
                   (file1['name'], int(status.progress()*100)), end='')
         print("\rProgress %s: 100%%" % file1['name'])
 
+    def delete(self, service=None, permanent=False):
+        '''Deletes the node and its children from the tree. If service is provided,
+        and permanent is True it deletes from the drive as well (does not move to trash).
+        '''
+        if service and permanent:
+            service.files().delete(fileId=self.id).execute()
+        self.parent.remove_child(self)
+        for child in self.children:
+            child.delete()
+        del self
+
     def get_children(self):
         self.children.sort(key=lambda s: s.get_name())
         return self.children
@@ -139,6 +150,13 @@ class DriveFile:
 
     def set_sequence(self, number):
         self.sequence_number = number
+
+    def trash(self, service):
+        service.files().update(fileId=self.id, body={'trashed': True}).execute()
+        self.parent.remove_child(self)
+        for child in self.children:
+            child.delete()
+        del self
 
     def update_children(self, service):
         '''Updates the children of a node with the drive files'''

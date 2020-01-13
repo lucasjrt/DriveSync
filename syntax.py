@@ -26,7 +26,7 @@ class SyntaxAnalyzer:
         move_parser = subparsers.add_parser('move', help=HELPS['move'][0], add_help=False)
         rename_parser = subparsers.add_parser('rename', help=HELPS['rename'][0], add_help=False)
         rm_parser = subparsers.add_parser('remove', help=HELPS['remove'][0], add_help=False)
-        restore_parser = subparsers.add_parser('restore', help=HELPS['restore'][0], add_help=False)
+        untrash_parser = subparsers.add_parser('untrash', help=HELPS['untrash'][0], add_help=False)
 
         # Sync ops
         start_parser = subparsers.add_parser('start', help=HELPS['start'][0], add_help=False)
@@ -39,7 +39,7 @@ class SyntaxAnalyzer:
         self.add_mkdir_parsers(mkdir_parser)
         self.add_rename_parsers(rename_parser)
         self.add_rm_parsers(rm_parser)
-        self.add_restore_parsers(restore_parser)
+        self.add_untrash_parsers(untrash_parser)
 
         self.add_start_parsers(start_parser)
 
@@ -87,9 +87,9 @@ class SyntaxAnalyzer:
         elif args.command == 'remove':
             for file1 in args.rm_files:
                 am.rm(file1, args.force_remove, args.trash_remove)
-        elif args.command == 'restore':
-            for file1 in args.restore_files:
-                am.restore(file1)
+        elif args.command == 'untrash':
+            for file1 in args.untrash_files:
+                am.untrash(file1)
 
         #Sync
         elif args.command == 'start':
@@ -235,12 +235,12 @@ class SyntaxAnalyzer:
                                help=HELPS['remove'][2])
         rm_parser.add_argument('-h', action='help', help=HELPS['help'][0])
 
-    def add_restore_parsers(self, restore_parser):
-        restore_parser.add_argument('restore_files',
+    def add_untrash_parsers(self, untrash_parser):
+        untrash_parser.add_argument('untrash_files',
                                     metavar='FILE',
                                     nargs='*',
-                                    help='File(s) to be restored from trash')
-        restore_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+                                    help='File(s) to be untrashed from trash')
+        untrash_parser.add_argument('-h', action='help', help=HELPS['help'][0])
 
 ############################################Sync options############################################
 

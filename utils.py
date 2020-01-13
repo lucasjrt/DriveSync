@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta, timezone
 import os
+import dateutil.parser
+import dateutil.tz
 
-from datetime import datetime
 from ruamel_yaml import YAML
 
 from defines import DEFAULT_SETTINGS, DEFAULT_SETTINGS_FILE
@@ -87,6 +89,53 @@ def load_settings():
 
     return DEFAULT_SETTINGS
 
+def rfc3339_to_human(time_string):
+    '''Converts RFC 3339 time format to better readable time format'''
+    # Don't know if it can be improved, probably yes
+    now = datetime.now()
+    local_now = now.replace(tzinfo=timezone.utc)
+    new_now = now.astimezone(timezone.utc)
+    diff = local_now - new_now
+    converting_time = dateutil.parser.parse(time_string).astimezone(timezone.utc)
+    printable_time = converting_time + diff
+    if now.date() != converting_time.date():
+        return printable_time.date().strftime('%b %d, %Y')
+    return printable_time.time().strftime('%I:%M %p')
+
+# <GRAPHICAL OUTPUT>
 def log(*message):
-    print("[", datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "]: ", sep='', end='')
+    print("[{}]: ".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     print(*message, flush=True)
+
+def warn(*message, verbose=False, sep=' '):
+    if verbose:
+        verb = '[WARNING]: '
+    else:
+        verb = ''
+    print(Colors.YELLOW + verb + sep.join(map(str, message)) + Colors.RESET)
+
+def error(*message, verbose=False, sep=' '):
+    if verbose:
+        verb = '[ERROR]: '
+    else:
+        verb = ''
+    print(Colors.RED + verb + sep.join(map(str, message)) + Colors.RESET)
+
+class Colors:
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    YELLOW = '\033[93m'
+
+    def disable(self):
+        self.GREEN = ''
+        self.RED = ''
+        self.RESET = ''
+        self.YELLOW = ''
+
+    def enable(self):
+        self.GREEN = '\033[92m'
+        self.RED = '\033[91m'
+        self.RESET = '\033[0m'
+        self.YELLOW = '\033[93m'
+#</GRAPHICAL OUTPUT>

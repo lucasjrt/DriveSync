@@ -1,9 +1,8 @@
-import io
 import os
 
-from apiclient.http import MediaIoBaseDownload
 from defines import DEFAULT_DOWNLOAD_CACHE, DEFAULT_DOWNLOAD_PATH, TREE_CACHE
-from mime_names import TYPES, CONVERTS
+from mime_names import TYPES
+from utils import error, rfc3339_to_human, warn
 
 from drive_tree import DriveTree
 from drive_file import DriveFile
@@ -38,95 +37,13 @@ class ActionManager:
                 parent_path = 'MyDrive'
             print('More than one file called "{}" was found in {}.'
                   .format(file_name, parent_path))
-            index = 'd'
-            depth = 1
-            children = list(nodes)
-            while index == 'd':
-                for i, node in enumerate(nodes):
-                    print('\n{}) {}'.format(str(i + 1), node.get_path()))
-                    self.drive_tree.print_folder(node, depth=depth)
-                index = input('\nWhich of them would you like to download? (1..%d/d) '
-                              % len(nodes))
-                if index == 'd':
-                    for i in range(depth):
-                        for node in list(children):
-                            if node.get_mime() != TYPES['folder']:
-                                continue
-                            node.update_children(self.service)
-                            for child in node.get_children():
-                                children.append(child)
-                            children.remove(node)
-                    depth += 1
-                    if not children:
-                        print('Max deepth reached')
-                else:
-                    try:
-                        index = int(index)
-                        if index < 1 or index > len(nodes):
-                            print('Invalid choice')
-                            index = 'd'
-                    except ValueError:
-                        print('Invalid choice')
-                        index = 'd'
-                self.drive_tree.save_to_file()
-            nodes[index - 1].download(destination, self.service)
+            target = self.__multiple_options(nodes)
+            target.download(destination, self.service)
         else:
             nodes[0].download(destination, self.service)
 
     def download_cache(self):
         self.drive_tree.download(DEFAULT_DOWNLOAD_CACHE)
-
-    def download_from_node(self, node, destination, recursive=True):
-        print('Save path:', destination)
-        destination = os.path.abspath(destination)
-        if not os.path.exists(destination):
-            os.mkdir(destination)
-
-        file1 = self.service.files().get(fileId=node.get_id(),\
-                                         fields='files(id, name, mimeType, parents)')
-        print('Downloading', file1['name'])
-
-        if file1['mimeType'] == TYPES['folder']:
-            folder_path = destination + '/' + file1['name']
-            if not os.path.exists(folder_path):
-                os.makedirs(folder_path)
-            if recursive:
-                children_list = self.service.files().\
-                                list(q='"%s" in parents and trashed = false' % file1['id'],\
-                                     fields='files(id, name, mimeType, parents)').execute
-                for child in children_list:
-                    self.download_from_path(node.get_path() + '/' + child['name'], folder_path)
-                return
-            return
-
-        if file1['mimeType'] in CONVERTS:
-            file1['name'] = os.path.splitext(file1['name'])[0] + \
-                                CONVERTS[file1['mimeType']][1]
-            mime = CONVERTS[file1['mimeType']][0]
-            request = self.service.files().export(fileId=file1['id'], mimeType=mime)
-        else:
-            file1.UpdateMetadata()
-            request = self.service.files().get_media(fileId=file1['id'])
-
-        save_path = destination + '/' + file1['name']
-        fh = io.FileIO(save_path, 'wb')
-        downloader = MediaIoBaseDownload(fh, request, chunksize=10*1024*1024)
-
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-            print("\rProgress %s: %3d%%." %
-                  (file1['name'], int(status.progress()*100)), end='')
-        print()
-
-    # TODO: set this to allow multiple files with the same name
-    def download_from_path(self, drive_path, destination, recursive=True):
-        node = self.drive_tree.get_nodes_from_path(drive_path)
-        if not node:
-            print(drive_path, 'not found')
-            return
-
-        self.download_from_node(node, destination, recursive)
 
     def file_status(self):
         pass
@@ -204,17 +121,7 @@ class ActionManager:
             print(dir_path, 'not found')
             return
         if len(parents) > 1:
-            print('More than one file was found with the path %s:' % dir_path)
-            i = 1
-            for parent in list(parents):
-                if parent.get_mime() != TYPES['folder']:
-                    print('"{}" is not a directory.')
-                    parents.remove(parent)
-                    continue
-                self.drive_tree.print_folder(parent)
-
-            index = input('Which of them would you want to create the file (1..%d)? ' % len(parents))
-            parent = parents[int(index) - 1]
+            parent = self.__multiple_options(parents)
         else:
             parent = parents[0]
 
@@ -242,6 +149,56 @@ class ActionManager:
                                     fields='id, parents').execute()
         origin_node.set_parent(dest_node)
         self.drive_tree.save_to_file()
+
+    def __multiple_options(self, nodes):
+        index = 'd'
+        depth = 1
+        children = list(nodes)
+        while index == 'd':
+            for i, node in enumerate(nodes):
+                print('\n{}) {}'.format(str(i + 1), node.get_path()))
+                self.drive_tree.print_folder(node, depth=depth)
+            index = input('\nWhich of them is your target? ([1..%d]/d) ' % len(nodes))
+            if index == 'd':
+                for i in range(depth):
+                    for node in list(children):
+                        if node.get_mime() != TYPES['folder']:
+                            continue
+                        node.update_children(self.service)
+                        for child in node.get_children():
+                            children.append(child)
+                        children.remove(node)
+                depth += 1
+                if not children:
+                    warn('Max deepth reached')
+            else:
+                try:
+                    index = int(index)
+                    if not 0 < index <= len(nodes):
+                        raise ValueError
+                except ValueError:
+                    error('Invalid choice')
+                    index = 'd'
+            self.drive_tree.save_to_file()
+        return nodes[index - 1]
+
+    def __multiple_trash_options(self, candidate_files):
+        index = 'd'
+        while index == 'd':
+            for i, candidate in enumerate(candidate_files):
+                print('\n{}) "{}"\t Last modified: {}'
+                      .format(str(i + 1), candidate['name'],
+                              rfc3339_to_human(candidate['modifiedTime'])))
+            index = input('\nWhich of them is your target? ([1..%d]) '
+                          % len(candidate_files))
+            try:
+                index = int(index)
+                if not 0 < index <= len(candidate_files):
+                    raise ValueError
+                return candidate_files[index - 1]
+            except ValueError:
+                error('Invalid choice')
+                index = 'd'
 
     def open_in_browser(self):
         pass
@@ -276,58 +233,60 @@ class ActionManager:
                 print('"{}" not found'.format(file_name))
                 return
             if len(nodes) > 1:
-                print('More than one file was found with the path "{}":'.format(file_name))
-
-                input()
-            # if force_remove:
-            #     sure = input('Are you sure you want to delete "%s" permanenlty? (y/N)'
-            #                  % (node.get_name()))
-            #     if sure.lower() == 'y':
-            #         self.service.files().delete(fileId=node.get_id()).execute()
-            #         print('File deleted')
-            #     else:
-            #         print('Aborted')
-            # else:
-            #     self.service.files().update(fileId=node.get_id(),
-            #                                 body={'trashed': True}).execute()
+                node = self.__multiple_options(nodes)
+                if force_remove:
+                    sure = input('Are you sure you want do delete "{}" permanently (y/N)? ')
+                    if sure.lower() == 'y':
+                        node.delete(service=self.service, permanent=True)
+                else:
+                    node.trash(self.service)
+            else:
+                nodes[0].trash(self.service)
         else:
+            fields = 'files(name, id, modifiedTime)'
             trashed_files = self.service.files().list(q='trashed = true',
-                                                      fields='files(name, id)').execute()\
+                                                      fields=fields).execute()\
                                                       .get('files', [])
-            deleting_file = None
+            candidate_files = []
             for file1 in trashed_files:
                 if file1['name'] == file_name:
-                    if deleting_file:
-                        # TODO: Fix this to choose which files wants to delete
-                        print('More than one file were found with the name of', file_name)
-                        print('(This will be fixed in a future release)')
-                        return
-                    deleting_file = (file1['name'], file1['id'])
-            if deleting_file:
-                sure = input('Are you sure you want to delete %s permanenlty? (y/N)'
-                             % (deleting_file[0]))
+                    candidate_files.append(file1)
+            if not candidate_files:
+                print('"%s" not found in trash' % file_name)
+                return
+            if len(candidate_files) > 1:
+                target = self.__multiple_trash_options(candidate_files)
+                sure = input('Are you sure you want to delete "%s" permanenlty? (y/N) '
+                             % target['name'])
                 if sure.lower() == 'y':
-                    self.service.files().delete(fileId=deleting_file[1]).execute()
-                    print('File deleted')
-                else:
-                    print('Aborted')
+                    self.service.files().delete(fileId=target['id']).execute()
             else:
-                print('"{}" not found in trash'.format(file_name))
+                sure = input('Are you sure you want to delete "%s" permanenlty? (y/N) '
+                             % candidate_files[0]['name'])
+                if sure.lower() == 'y':
+                    self.service.files().delete(fileId=candidate_files[0]['id']).execute()
+            self.drive_tree.save_to_file()
 
-    def restore(self, restore_file):
+    def untrash(self, untrash_file):
+        fields = 'files(name, id, parents, mimeType, modifiedTime)'
         trashed_files = self.service.files().list(q='trashed = true',
-                                                  fields='files(name, id)')\
+                                                  fields=fields)\
                                                   .execute().get('files', [])
-        found = False
+        candidate_files = []
         for file1 in trashed_files:
-            if file1['name'] == restore_file:
-                found = True
-                self.service.files().update(fileId=file1['id'],
-                                            body={'trashed': False}).execute()
-        if not found:
-            print('"', restore_file, '" not found', sep='')
+            if file1['name'] == untrash_file:
+                candidate_files.append(file1)
+        if not candidate_files:
+            print('"%s" not found' % untrash_file)
             return
-        print(restore_file, 'restored')
+        if len(candidate_files) > 1:
+            target = self.__multiple_trash_options(candidate_files)
+        else:
+            target = candidate_files[0]
+        self.service.files().update(fileId=target['id'],
+                                    body={'trashed': False}).execute()
+        parent = self.drive_tree.get_node_from_id(target['id'])
+        DriveFile(parent, target)
 
     def show_cache(self):
         if os.path.exists(TREE_CACHE):
