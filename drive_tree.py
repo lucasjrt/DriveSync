@@ -42,6 +42,11 @@ class DriveTree:
                     return ret
         return None
 
+    def get_node_from_id(self, fileId):
+        if fileId in self.folders_hash:
+            return self.folders_hash[fileId]
+        return None
+
     def get_closest_nodes_from_path(self, path):
         '''Returns a list of all the nodes that are close to the path,
         of the local existing tree. It's a list because it's possible
@@ -65,7 +70,8 @@ class DriveTree:
                 current_nodes.remove(node)
             if depth == last_depth:
                 break
-
+        if not current_nodes:
+            current_nodes = [self.root]
         return current_nodes, '/'.join(path_list[depth:])
 
     def get_nodes_from_path(self, path, exclusive=True):

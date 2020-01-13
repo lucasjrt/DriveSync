@@ -28,7 +28,7 @@ HELPS = \
     'mkdir': ['''Create a specified directory in drive'''],
     'move': ['''Move a file between directories in drive'''],
     'rename': ['''Rename a file in drive'''],
-    'restore': ['''Restores a file from trash'''],
+    'untrash': ['''Untrashes a file'''],
     'remove': [
         '''Move a drive file to trash (see [%(prog)s rm -h] for extra information)''',
         '''Delete the file permanently without moving to trash''',
