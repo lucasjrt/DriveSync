@@ -50,6 +50,11 @@ class Synchronizer:
         while True:
             signal.pause()
 
+    def synchronize(self):
+        '''Main method that will execute every time the alarm triggers'''
+        print('This should be syncrhonizing right now')
+        pass
+
     def pause(self):
         self.observer.stop()
 

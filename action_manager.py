@@ -61,10 +61,14 @@ class ActionManager:
         files = []
         if list_trash:
             file_list = self.service.files().list(q='trashed = true',
-                                                  fields='files(name)').execute()\
+                                                  fields='files(name, mimeType)')\
+                                                  .execute()\
                                                   .get('files', [])
             for file1 in file_list:
-                files.append(file1['name'])
+                is_file = ''
+                if file1['mimeType'] == TYPES['folder']:
+                    is_file = '/'
+                files.append(file1['name'] + is_file)
 
             for file1 in sorted(files, key=lambda s: s.casefold()):
                 print(file1)
@@ -100,13 +104,19 @@ class ActionManager:
             if modified:
                 self.drive_tree.save_to_file()
 
-            files = [f['name'] for f in files]
+            print_files = []
+            for file1 in list(files):
+                is_file = ''
+                if file1['mimeType'] == TYPES['folder']:
+                    is_file = '/'
+                print_files.append(file1['name'] + is_file)
+                
             if multiple:
                 print('{}) {}:'.format(i + 1, node.get_path()))
                 node.update_children(self.service)
                 self.drive_tree.print_folder(node)
             else:
-                for file1 in sorted(files, key=lambda s: s.casefold()):
+                for file1 in sorted(print_files, key=lambda s: s.casefold()):
                     print(file1)
             print()
 
