@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import os
-import dateutil.parser
-import dateutil.tz
+import dateutil.parser as parser
+from dateutil.tz import tzlocal
 
 from ruamel_yaml import YAML
 
@@ -91,16 +91,11 @@ def load_settings():
 
 def rfc3339_to_human(time_string):
     '''Converts RFC 3339 time format to better readable time format'''
-    # Don't know if it can be improved, probably yes
     now = datetime.now()
-    local_now = now.replace(tzinfo=timezone.utc)
-    new_now = now.astimezone(timezone.utc)
-    diff = local_now - new_now
-    converting_time = dateutil.parser.parse(time_string).astimezone(timezone.utc)
-    printable_time = converting_time + diff
+    converting_time = parser.parse(time_string).astimezone(tzlocal())
     if now.date() != converting_time.date():
-        return printable_time.date().strftime('%b %d, %Y')
-    return printable_time.time().strftime('%I:%M %p')
+        return converting_time.date().strftime('%b %d, %Y')
+    return converting_time.time().strftime('%I:%M %p')
 
 # <GRAPHICAL OUTPUT>
 def log(*message):
