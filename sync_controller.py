@@ -46,8 +46,20 @@ class SyncController:
                 except ValueError:
                     print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
-    def resume_sync(self):
-        pass
+    def resume(self):
+        with open(PID_FILE, 'r') as pid:
+            try:
+                flock(pid, LOCK_EX | LOCK_NB)
+                flock(pid, LOCK_UN)
+                print('No instance of JRT Drive Sync is running')
+            except BlockingIOError:
+                try:
+                    target_pid = int(pid.read())
+                    os.kill(target_pid, signal.SIGUSR2)
+                    print('Synchronization is no longer paused')
+                except ValueError:
+                    print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
+                    
 
     def show_mirror(self):
         if os.path.exists(TREE_MIRROR):
@@ -60,9 +72,9 @@ class SyncController:
             try:
                 flock(sync, LOCK_EX | LOCK_NB)
                 flock(sync, LOCK_UN)
-                print('Starting...\nSee', LOG_FILE, 'for more information')
                 subprocess.Popen(["python", SYNC_APPLICATION, target_file],
                                  stdout=open(LOG_FILE, 'a'))
+                print('JDS is now running\nSee', LOG_FILE, 'for more information')
             except BlockingIOError:
                 print('JRT Drive Sync is already running')
 
@@ -76,8 +88,8 @@ class SyncController:
                 print('Stopping')
                 try:
                     target_pid = int(pid.read())
-                    print('Sending signal to', target_pid)
                     os.kill(target_pid, signal.SIGTERM)
+                    print('JRT Drive Sync is no longer running')
                 except ValueError:
                     print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 

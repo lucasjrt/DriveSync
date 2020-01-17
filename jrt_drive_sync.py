@@ -1,7 +1,9 @@
 import os
 import signal
+import sched
 import time
 from fcntl import flock, LOCK_EX, LOCK_NB
+from threading import Thread
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -37,39 +39,60 @@ class Synchronizer:
         sig_handler = SignalHandler(self)
         signal.signal(signal.SIGTERM, sig_handler.stop_handler)
         signal.signal(signal.SIGUSR1, sig_handler.pause_handler)
+        signal.signal(signal.SIGUSR2, sig_handler.resume_handler)
+
 
         self.observer = Observer()
-        self.observer.schedule(FileChangedHandler(), self.drive_sync_directory, recursive=True)
+        self.observer.schedule(FileChangedHandler(self), self.drive_sync_directory, recursive=True)
         self.observer.start()
 
-        # self.sync_thread = Thread
+        self.sched = sched.scheduler(time.time, time.sleep)
+        self.sched.enter(5, 1, self.synchronize, (self.sched,))
+
 
         log('sync directory:', self.drive_sync_directory)
         log('delay:', self.delay, 'seconds')
 
+        self.sync_thread = Thread(target=self.sched.run)
+        self.sync_thread.start()
+
         while True:
             signal.pause()
 
-    def synchronize(self):
-        '''Main method that will execute every time the alarm triggers'''
-        print('This should be syncrhonizing right now')
-        pass
+    def is_syncing(self):
+        return self.do_sync
+
+    def synchronize(self, sch):
+        '''Main method that will execute every time it's sync time'''
+        if self.do_sync:
+            log('This should be syncrhonizing right now')
+        sch.enter(5, 1, self.synchronize, (sch,))
 
     def pause(self):
-        self.observer.stop()
+        self.do_sync = False
+
+    def resume(self):
+        self.do_sync = True
 
     def stop(self):
         self.observer.stop()
+        self.do_sync = False
 
 class FileChangedHandler(FileSystemEventHandler):
+    def __init__(self, instance):
+        self.instance = instance
+    
     def on_created(self, event):
-        log('File created', event.src_path)
+        if self.instance.is_syncing():
+            log('File created', event.src_path)
 
     def on_moved(self, event):
-        log('File moved from', event.src_path, 'to', event.dest_path)
+        if self.instance.is_syncing():
+            log('File moved from', event.src_path, 'to', event.dest_path)
 
     def on_deleted(self, event):
-        log('File deleted', event.src_path)
+        if self.instance.is_syncing():
+            log('File deleted', event.src_path)
 
 def main():
     with open(PID_FILE, 'w') as cntl:

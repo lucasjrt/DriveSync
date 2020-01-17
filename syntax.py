@@ -30,6 +30,7 @@ class SyntaxAnalyzer:
 
         # Sync ops
         start_parser = subparsers.add_parser('start', help=HELPS['start'][0], add_help=False)
+        subparsers.add_parser('resume',help=HELPS['resume'][0])
         subparsers.add_parser('stop', help=HELPS['stop'][0])
         subparsers.add_parser('pause', help=HELPS['pause'][0])
 
@@ -94,10 +95,12 @@ class SyntaxAnalyzer:
         #Sync
         elif args.command == 'start':
             sc.start(args.start_target)
-        elif args.command == 'stop':
-            sc.stop()
         elif args.command == 'pause':
             sc.pause()
+        elif args.command == 'resume':
+            sc.resume()
+        elif args.command == 'stop':
+            sc.stop()
 
         #Options
         # -sc

@@ -5,7 +5,7 @@ from dateutil.tz import tzlocal
 
 from ruamel_yaml import YAML
 
-from defines import DEFAULT_SETTINGS, DEFAULT_SETTINGS_FILE
+from defines import DEFAULT_SETTINGS, DEFAULT_SETTINGS_FILE, LOG_FILE
 
 def add_slashes(files):
     for i, w in enumerate(files):
@@ -84,7 +84,7 @@ def load_settings():
 
             return settings
 
-    with open(DEFAULT_SETTINGS_FILE, 'w+') as f:
+    with open(DEFAULT_SETTINGS_FILE, 'w') as f:
         yaml.dump(DEFAULT_SETTINGS, f)
 
     return DEFAULT_SETTINGS
@@ -98,9 +98,9 @@ def rfc3339_to_human(time_string):
     return converting_time.time().strftime('%I:%M %p')
 
 # <GRAPHICAL OUTPUT>
-def log(*message):
-    print("[{}]: ".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    print(*message, flush=True)
+def log(*message, file_output=LOG_FILE):
+    with open(file_output, 'a') as f:
+        print('[{}]:'.format(datetime.now()), *message, file=f, flush=True)
 
 def warn(*message, verbose=False, sep=' '):
     if verbose:

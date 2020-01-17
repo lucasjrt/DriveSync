@@ -5,10 +5,14 @@ class SignalHandler():
         self.instance = instance
 
     def pause_handler(self, _, __):
-        log('Syncronization being paused by user')
+        log('Syncronization paused')
         self.instance.pause()
 
+    def resume_handler(self, _, __):
+        log('Synchronization resumed')
+        self.instance.resume()
+
     def stop_handler(self, _, __):
-        log('Exiting jds by user request')
+        log('Exiting JDS')
         self.instance.stop()
         exit(0)
