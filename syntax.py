@@ -25,7 +25,7 @@ class SyntaxAnalyzer:
         mkdir_parser = subparsers.add_parser('mkdir', help=HELPS['mkdir'], add_help=False)
         move_parser = subparsers.add_parser('move', help=HELPS['move'], add_help=False)
         rename_parser = subparsers.add_parser('rename', help=HELPS['rename'], add_help=False)
-        rm_parser = subparsers.add_parser('remove', help=HELPS['remove'], add_help=False)
+        rm_parser = subparsers.add_parser('remove', help=HELPS['remove'][0], add_help=False)
         untrash_parser = subparsers.add_parser('untrash', help=HELPS['untrash'], add_help=False)
 
         # Sync ops
@@ -52,10 +52,12 @@ class SyntaxAnalyzer:
             return
 
         args = main_parser.parse_args()
+        session_required = [args.sync_cache, args.sync_mirror, args.download_cache,
+                            args.download_mirror]
+        no_session_comands = ['start', 'resume', 'stop', 'status', 'pause']
         # Just need drive session if performing any task with session
-        if args.command is not None\
-           or args.sync_cache\
-           or args.sync_mirror:
+        if args.command not in no_session_comands\
+        or any(session_required):
             session = DriveSession(CREDENTIALS_FILE)
             print('Drive session started')
             root_file = session.get_service().files().get(fileId='root').execute()

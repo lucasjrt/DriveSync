@@ -15,6 +15,7 @@ from sig_handlers import SignalHandler
 
 class Synchronizer:
     def __init__(self):
+        self.is_running = True # identifies if this is running (used to kill the sync thread)
         self.drive_session = DriveSession(CREDENTIALS_FILE)
         settings = load_settings()
         self.do_sync = True # if is going to run the sync loop
@@ -66,7 +67,8 @@ class Synchronizer:
         '''Main method that will execute every time it's sync time'''
         if self.do_sync:
             log('This should be syncrhonizing right now')
-        sch.enter(5, 1, self.synchronize, (sch,))
+        if self.is_running:
+            sch.enter(5, 1, self.synchronize, (sch,))
 
     def pause(self):
         self.do_sync = False
@@ -81,6 +83,7 @@ class Synchronizer:
     def stop(self):
         self.observer.stop()
         self.do_sync = False
+        self.is_running = False
 
 class FileChangedHandler(FileSystemEventHandler):
     def __init__(self, instance):
