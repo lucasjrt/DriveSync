@@ -66,16 +66,13 @@ class Synchronizer:
         '''Main method that will execute every time it's sync time'''
         while True:
             if not self.sync_running:
-                log('Exiting synchronization method')
                 return
             self.sync_running.wait()
             log('This should be syncrhonizing right now')
             
             self.time_left = self.delay
             while self.time_left:
-                log('Time left until next sync', self.time_left)
                 if not self.is_running:
-                    log('Exiting synchronization method')
                     return
                 self.time_left -= 1
                 self.sync_running.wait()
@@ -84,24 +81,22 @@ class Synchronizer:
 
     def pause(self):
         if self.sync_running.is_set():
-            log('Pausing')
             self.sync_running.clear()
             return True
         return False
 
     def resume(self):
         if not self.sync_running.is_set():
-            log('sync was false')
             self.sync_running.set()
             return True
         return False
 
     def status(self):
         if self.sync_running.is_set():
-            log('Status:', format_seconds(self.time_left))
+            status = format_seconds(self.time_left) + ' until next sync'
         else:
-            log('Status: synchronization paused')
-        return 'Got this as status'
+            status = 'synchronization paused'
+        return status
 
     def stop(self):
         self.observer.stop()

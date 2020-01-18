@@ -23,22 +23,21 @@ class SignalHandler():
         if command == 'pause':
             if self.instance.pause():
                 log('Syncronization paused')
-                # lines.append(str(os.getpid()) + ';paused\n')
-            # else:
-                # lines.append(str(os.getpid()) + ';false;p\n')
+                lines.append(str(os.getpid()) + ';paused\n')
+            else:
+                lines.append(str(os.getpid()) + ';false\n')
         elif command == 'resume':
             log('resume command')
             if self.instance.resume():
                 log('Synchronization resumed')
-                # lines.append(str(os.getpid()) + ';resumed\n')
-            # else:
-                # lines.append(str(os.getpid()) + ';false;r\n')
+                lines.append(str(os.getpid()) + ';resumed\n')
+            else:
+                lines.append(str(os.getpid()) + ';false\n')
         elif command == 'status':
-            self.instance.status()
-            # lines.append(str(os.getpid()) + ';' + self.instance.status() + '\n')
+            lines.append(str(os.getpid()) + ';' + self.instance.status() + '\n')
         with open(IPC_FILE, 'w') as f:
             f.writelines(lines)
-        # os.kill(int(pid), signal.SIGUSR1) # the answer to the other process
+        os.kill(int(pid), signal.SIGUSR1) # the answer to the other process
 
     def stop_handler(self, _, __):
         log('Exiting JDS')
