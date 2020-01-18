@@ -1,16 +1,15 @@
 import os
 import signal
-import sched
 import time
 from fcntl import flock, LOCK_EX, LOCK_NB
-from threading import Thread
+from threading import Thread, Event
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from defines import CREDENTIALS_FILE, PID_FILE, TREE_CACHE, TREE_MIRROR
 from drive_tree import DriveTree
 from drive_session import DriveSession
-from utils import log, load_settings, delay_to_seconds
+from utils import delay_to_seconds, format_seconds, load_settings, log
 from sig_handlers import SignalHandler
 
 class Synchronizer:
@@ -18,8 +17,8 @@ class Synchronizer:
         self.is_running = True # identifies if this is running (used to kill the sync thread)
         self.drive_session = DriveSession(CREDENTIALS_FILE)
         settings = load_settings()
-        self.do_sync = True # if is going to run the sync loop
-        self.delay = delay_to_seconds(settings['delay-time'])
+        # self.delay = delay_to_seconds(settings['delay-time'])
+        self.delay = 20 # debug only line
         self.blacklist_enabled = settings['blacklist-enabled']
         self.whitelist_enabled = settings['whitelist-enabled']
         if self.blacklist_enabled and self.whitelist_enabled:
@@ -39,52 +38,76 @@ class Synchronizer:
 
         sig_handler = SignalHandler(self)
         signal.signal(signal.SIGTERM, sig_handler.stop_handler)
-        signal.signal(signal.SIGUSR1, sig_handler.pause_handler)
-        signal.signal(signal.SIGUSR2, sig_handler.resume_handler)
-
+        signal.signal(signal.SIGUSR1, sig_handler.signal_handler)
 
         self.observer = Observer()
         self.observer.schedule(FileChangedHandler(self), self.drive_sync_directory, recursive=True)
         self.observer.start()
 
-        self.sched = sched.scheduler(time.time, time.sleep)
-        self.sched.enter(5, 1, self.synchronize, (self.sched,))
-
-
         log('sync directory:', self.drive_sync_directory)
         log('delay:', self.delay, 'seconds')
 
-        self.sync_thread = Thread(target=self.sched.run)
+        self.sync_running = Event()
+        self.sync_running.set()
+
+        self.sync_thread = Thread(target=self.synchronize)
         self.sync_thread.start()
 
         while True:
             signal.pause()
 
-    def is_syncing(self):
-        return self.do_sync
+    def get_sync_thread(self):
+        return self.sync_thread
 
-    def synchronize(self, sch):
+    def is_syncing(self):
+        return self.sync_running.is_set()
+
+    def synchronize(self):
         '''Main method that will execute every time it's sync time'''
-        if self.do_sync:
+        while True:
+            if not self.sync_running:
+                log('Exiting synchronization method')
+                return
+            self.sync_running.wait()
             log('This should be syncrhonizing right now')
-        if self.is_running:
-            sch.enter(5, 1, self.synchronize, (sch,))
+            
+            self.time_left = self.delay
+            while self.time_left:
+                log('Time left until next sync', self.time_left)
+                if not self.is_running:
+                    log('Exiting synchronization method')
+                    return
+                self.time_left -= 1
+                self.sync_running.wait()
+                time.sleep(1)
+
 
     def pause(self):
-        self.do_sync = False
+        if self.sync_running.is_set():
+            log('Pausing')
+            self.sync_running.clear()
+            return True
+        return False
 
     def resume(self):
-        self.do_sync = True
+        if not self.sync_running.is_set():
+            log('sync was false')
+            self.sync_running.set()
+            return True
+        return False
 
     def status(self):
-        for event in self.sched.queue:
-            log(event)
+        if self.sync_running.is_set():
+            log('Status:', format_seconds(self.time_left))
+        else:
+            log('Status: synchronization paused')
+        return 'Got this as status'
 
     def stop(self):
         self.observer.stop()
-        self.do_sync = False
         self.is_running = False
-
+        self.sync_running.set()
+        
 class FileChangedHandler(FileSystemEventHandler):
     def __init__(self, instance):
         self.instance = instance

@@ -14,6 +14,7 @@ DEFAULT_SETTINGS_FILE = APP_PATH + '/config.yaml'
 SYNC_APPLICATION = APP_PATH + '/jrt_drive_sync.py'
 TREE_CACHE = APP_PATH + '/.cache'
 TREE_MIRROR = APP_PATH + '/.mirror'
+IPC_FILE = APP_PATH + '/.ipc'
 HELPS = \
 {
     #Operations

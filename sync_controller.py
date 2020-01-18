@@ -3,7 +3,7 @@ import signal
 import subprocess
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_UN
 
-from defines import DEFAULT_DOWNLOAD_MIRROR, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
+from defines import DEFAULT_DOWNLOAD_MIRROR, IPC_FILE, LOG_FILE, TREE_MIRROR, PID_FILE, SYNC_APPLICATION
 from drive_tree import DriveTree
 
 class SyncController:
@@ -41,8 +41,20 @@ class SyncController:
             except BlockingIOError:
                 try:
                     target_pid = int(pid.read())
-                    print('Sending signal to', target_pid)
+                    print('Pausing syncrhonization', target_pid)
+                    with open(IPC_FILE, 'a') as f:
+                        f.write(str(os.getpid()) + ';pause\n')
                     os.kill(target_pid, signal.SIGUSR1)
+                    # returned = signal.sigtimedwait([signal.SIGUSR1], 3.0)
+                    # print(signal.sigwait([signal.SIGUSR1]))
+                    # print('anything in here')
+                    # print('sigusr1:', signal.SIGUSR1)
+                    # signal.signal(signal.SIGUSR1, None)
+                    # signal.sigwait([signal.SIGUSR1])
+                    # if returned:
+                    #     print('Synchronizaton paused')
+                    # else:
+                    #     print('Unable to pause the sync')
                 except ValueError:
                     print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
@@ -55,7 +67,9 @@ class SyncController:
             except BlockingIOError:
                 try:
                     target_pid = int(pid.read())
-                    os.kill(target_pid, signal.SIGUSR2)
+                    with open(IPC_FILE, 'a') as f:
+                        f.write(str(os.getpid()) + ';resume\n')
+                    os.kill(target_pid, signal.SIGUSR1)
                     print('Synchronization is no longer paused')
                 except ValueError:
                     print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
@@ -77,6 +91,21 @@ class SyncController:
                 print('JDS is now running\nSee', LOG_FILE, 'for more information')
             except BlockingIOError:
                 print('JRT Drive Sync is already running')
+    
+    def status(self):
+        with open(PID_FILE, 'r') as pid:
+            try:
+                flock(pid, LOCK_EX | LOCK_NB)
+                flock(pid, LOCK_UN)
+                print('JDS is not running')
+            except BlockingIOError:
+                try:
+                    target_pid = int(pid.read())
+                    with open(IPC_FILE, 'a') as f:
+                        f.write(str(os.getpid()) + ';status\n')
+                    os.kill(target_pid, signal.SIGUSR1)
+                except ValueError:
+                    print('ERROR: The PID file is invalid, can\'t send signal to the sync process.')
 
     def stop(self):
         with open(PID_FILE, 'r') as pid:

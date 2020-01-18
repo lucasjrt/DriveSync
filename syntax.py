@@ -102,6 +102,8 @@ class SyntaxAnalyzer:
             sc.pause()
         elif args.command == 'resume':
             sc.resume()
+        elif args.command == 'status':
+            sc.status()
         elif args.command == 'stop':
             sc.stop()
 

@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
+
 import os
 import dateutil.parser as parser
-from dateutil.tz import tzlocal
 
+from dateutil.tz import tzlocal
 from ruamel_yaml import YAML
 
 from defines import DEFAULT_SETTINGS, DEFAULT_SETTINGS_FILE, LOG_FILE
@@ -96,6 +97,19 @@ def rfc3339_to_human(time_string):
     if now.date() != converting_time.date():
         return converting_time.date().strftime('%b %d, %Y')
     return converting_time.time().strftime('%I:%M %p')
+
+def format_seconds(seconds):
+    returning = '%d seconds' % (seconds % 60)
+    if seconds // 60:
+        seconds //= 60
+        returning = ('%d minutes, ' % (seconds % 60)) + returning
+        if seconds // 60:
+            seconds //= 60
+            returning = ('%d hours, ' % (seconds % 24)) + returning
+            if seconds // 24:
+                seconds //= 24
+                returning = ('%d days, ' % seconds) + returning
+    return returning
 
 # <GRAPHICAL OUTPUT>
 def log(*message, file_output=LOG_FILE):
