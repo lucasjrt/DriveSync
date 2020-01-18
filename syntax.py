@@ -19,20 +19,21 @@ class SyntaxAnalyzer:
         subparsers = main_parser.add_subparsers(title='Commands', dest='command', metavar='')
 
         # Basic ops
-        download_parser = subparsers.add_parser('download', help=HELPS['download'][0],
+        download_parser = subparsers.add_parser('download', help=HELPS['download'],
                                                 add_help=False)
         list_parser = subparsers.add_parser('list', help=HELPS['list'][0], add_help=False)
-        mkdir_parser = subparsers.add_parser('mkdir', help=HELPS['mkdir'][0], add_help=False)
-        move_parser = subparsers.add_parser('move', help=HELPS['move'][0], add_help=False)
-        rename_parser = subparsers.add_parser('rename', help=HELPS['rename'][0], add_help=False)
-        rm_parser = subparsers.add_parser('remove', help=HELPS['remove'][0], add_help=False)
-        untrash_parser = subparsers.add_parser('untrash', help=HELPS['untrash'][0], add_help=False)
+        mkdir_parser = subparsers.add_parser('mkdir', help=HELPS['mkdir'], add_help=False)
+        move_parser = subparsers.add_parser('move', help=HELPS['move'], add_help=False)
+        rename_parser = subparsers.add_parser('rename', help=HELPS['rename'], add_help=False)
+        rm_parser = subparsers.add_parser('remove', help=HELPS['remove'], add_help=False)
+        untrash_parser = subparsers.add_parser('untrash', help=HELPS['untrash'], add_help=False)
 
         # Sync ops
-        start_parser = subparsers.add_parser('start', help=HELPS['start'][0], add_help=False)
-        subparsers.add_parser('resume',help=HELPS['resume'][0])
-        subparsers.add_parser('stop', help=HELPS['stop'][0])
-        subparsers.add_parser('pause', help=HELPS['pause'][0])
+        start_parser = subparsers.add_parser('start', help=HELPS['start'], add_help=False)
+        subparsers.add_parser('resume',help=HELPS['resume'])
+        subparsers.add_parser('stop', help=HELPS['stop'])
+        subparsers.add_parser('status', help=HELPS['status'])
+        subparsers.add_parser('pause', help=HELPS['pause'])
 
         self.add_download_parser(download_parser)
         self.add_list_parsers(list_parser)
@@ -179,7 +180,7 @@ class SyntaxAnalyzer:
                                      metavar='DESTINATION',
                                      type=str,
                                      help='Location to where the downloaded file will be save')
-        download_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        download_parser.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_list_parsers(self, list_parser):
         group = list_parser.add_mutually_exclusive_group()
@@ -192,14 +193,14 @@ class SyntaxAnalyzer:
                            action='store_true',
                            dest='list_trash',
                            help=HELPS['list'][1])
-        group.add_argument('-h', action='help', help=HELPS['help'][0])
+        group.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_mkdir_parsers(self, mkdir_parser):
         mkdir_parser.add_argument('mkdir_file',
                                   metavar='FILE',
                                   nargs='*',
                                   help='Directory path')
-        mkdir_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        mkdir_parser.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_move_parsers(self, move_parser):
         move_parser.add_argument('move_origin',
@@ -209,7 +210,7 @@ class SyntaxAnalyzer:
                                  metavar='DESTINATION',
                                  nargs=1,
                                  help='The destination file')
-        move_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        move_parser.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_rename_parsers(self, rename_parser):
         rename_parser.add_argument('rename_file',
@@ -220,7 +221,7 @@ class SyntaxAnalyzer:
                                    metavar='NAME',
                                    nargs=1,
                                    help='New name')
-        rename_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        rename_parser.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_rm_parsers(self, rm_parser):
         rm_parser.add_argument('rm_files',
@@ -236,14 +237,14 @@ class SyntaxAnalyzer:
                                action='store_true',
                                dest='trash_remove',
                                help=HELPS['remove'][2])
-        rm_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        rm_parser.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_untrash_parsers(self, untrash_parser):
         untrash_parser.add_argument('untrash_files',
                                     metavar='FILE',
                                     nargs='*',
                                     help='File(s) to be untrashed from trash')
-        untrash_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        untrash_parser.add_argument('-h', action='help', help=HELPS['help'])
 
 ############################################Sync options############################################
 
@@ -255,7 +256,7 @@ class SyntaxAnalyzer:
                                   nargs='?',
                                   help='The target folder to synchronize with drive (Default:' +
                                   DEFAULT_DRIVE_SYNC_DIRECTORY + ')')
-        start_parser.add_argument('-h', action='help', help=HELPS['help'][0])
+        start_parser.add_argument('-h', action='help', help=HELPS['help'])
 
     def add_options(self, parser):
         options = parser.add_argument_group("JRT Drive Sync Options")
@@ -266,71 +267,71 @@ class SyntaxAnalyzer:
                            metavar='FILE',
                            nargs='*',
                            type=str,
-                           help=HELPS['set-blacklist'][0])
+                           help=HELPS['set-blacklist'])
         mutex.add_argument('-b',
                            dest='add_blacklist',
                            metavar='FILE',
                            nargs='*',
                            type=str,
-                           help=HELPS['add-blacklist'][0])
+                           help=HELPS['add-blacklist'])
         options.add_argument('-cc',
                              action='store_true',
                              dest='clear_cache',
-                             help=HELPS['clear-cache'][0])
+                             help=HELPS['clear-cache'])
         options.add_argument('-cm',
                              action='store_true',
                              dest='clear_mirror',
-                             help=HELPS['clear-mirror'][0])
+                             help=HELPS['clear-mirror'])
         options.add_argument('-dc',
                              action='store_true',
                              dest='download_cache',
-                             help=HELPS['download-cache'][0])
+                             help=HELPS['download-cache'])
         options.add_argument('-dm',
                              action='store_true',
                              dest='download_mirror',
-                             help=HELPS['download-mirror'][0])
+                             help=HELPS['download-mirror'])
         mutex.add_argument('-rb',
                            dest='remove_blacklist',
                            metavar='FILE',
                            nargs='+',
                            type=str,
-                           help=HELPS['remove-blacklist'][0])
+                           help=HELPS['remove-blacklist'])
         mutex.add_argument('-rw',
                            dest='remove_whitelist',
                            metavar='FILE',
                            nargs='+',
                            type=str,
-                           help=HELPS['remove-whitelist'][0])
+                           help=HELPS['remove-whitelist'])
         options.add_argument('-sf',
                              action='store_true',
                              dest='show_filter',
-                             help=HELPS['show-filter'][0])
+                             help=HELPS['show-filter'])
         options.add_argument('-sc',
                              action='store_true',
                              dest='show_cache',
-                             help=HELPS['show-cache'][0])
+                             help=HELPS['show-cache'])
         options.add_argument('-sm',
                              action='store_true',
                              dest='show_mirror',
-                             help=HELPS['show-mirror'][0])
+                             help=HELPS['show-mirror'])
         options.add_argument('-syc',
                              action='store_true',
                              dest='sync_cache',
-                             help=HELPS['sync-cache'][0])
+                             help=HELPS['sync-cache'])
         options.add_argument('-sym',
                              action='store_true',
                              dest='sync_mirror',
-                             help=HELPS['sync-mirror'][0])
+                             help=HELPS['sync-mirror'])
         mutex.add_argument('-W',
                            dest='set_whitelist',
                            metavar='FILE',
                            nargs='*',
                            type=str,
-                           help=HELPS['set-whitelist'][0])
+                           help=HELPS['set-whitelist'])
         mutex.add_argument('-w',
                            dest='add_whitelist',
                            metavar='FILE',
                            nargs='*',
                            type=str,
-                           help=HELPS['add-whitelist'][0])
-        options.add_argument('-h', action='help', help=HELPS['help'][0])
+                           help=HELPS['add-whitelist'])
+        options.add_argument('-h', action='help', help=HELPS['help'])

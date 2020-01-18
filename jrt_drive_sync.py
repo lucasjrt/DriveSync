@@ -74,6 +74,10 @@ class Synchronizer:
     def resume(self):
         self.do_sync = True
 
+    def status(self):
+        for event in self.sched.queue:
+            log(event)
+
     def stop(self):
         self.observer.stop()
         self.do_sync = False

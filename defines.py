@@ -17,18 +17,18 @@ TREE_MIRROR = APP_PATH + '/.mirror'
 HELPS = \
 {
     #Operations
-    'download': ['''Download a folder or file from drive to local
-    storage (Default: ~/Drive_downloads'''],
-    'download-cache': ['''Download the cache tree to the local machine'''],
-    'download-mirror': ['''Download the mirror tree to the local machine'''],
+    'download': '''Download a folder or file from drive to local
+    storage (Default: ~/Drive_downloads''',
+    'download-cache': '''Download the cache tree to the local machine''',
+    'download-mirror': '''Download the mirror tree to the local machine''',
     'list': [
         '''List drive root or if specified, a folder''',
         '''List trash'''
     ],
-    'mkdir': ['''Create a specified directory in drive'''],
-    'move': ['''Move a file between directories in drive'''],
-    'rename': ['''Rename a file in drive'''],
-    'untrash': ['''Untrashes a file'''],
+    'mkdir': '''Create a specified directory in drive''',
+    'move': '''Move a file between directories in drive''',
+    'rename': '''Rename a file in drive''',
+    'untrash': '''Untrashes a file''',
     'remove': [
         '''Move a drive file to trash (see [%(prog)s rm -h] for extra information)''',
         '''Delete the file permanently without moving to trash''',
@@ -36,65 +36,54 @@ HELPS = \
     ],
 
     #Synchronizer
-    'pause': ['''Pauses sync without stoping the execution of jds and can be resumed
-                 with jds resume'''],
-    'resume': ['''Return synchronizing after a pause'''],
-    'start': ['''Starts the process that will keep the selected folder
-                 synchronized with Google Drive folder'''],
-    'stop': ['''Stops syncronizing the drive'''],
+    'pause': '''Pauses sync without stoping the execution of jds and can be resumed
+                 with jds resume''',
+    'resume': '''Return synchronizing after a pause''',
+    'start': '''Starts the process that will keep the selected folder
+                 synchronized with Google Drive folder''',
+    'status': '''Shows current sync status''',
+    'stop': '''Stops syncronizing the drive''',
 
     #Options
-    'add-blacklist': ['''Adds one or more files to the blacklist and enables blacklist if off.
-                      If no files are given it toggles blacklist enabled'''],
-    'add-whitelist': ['''Adds one or more files to the whitelist and enables whitelist if off.
-                      If no files are given it toggles whitelist enabled'''],
-    'clear-cache': ['''Clear the local cache from drive files'''],
-    'clear-mirror': ['''Clear the local mirror from drive files'''],
-    'remove-blacklist': ['''Removes the given files from blacklist'''],
-    'remove-whitelist': ['''Removes the given files from whitelist'''],
-    'set-blacklist': ['''Set blacklist to the given files. Clear filter if no files are given'''],
-    'set-whitelist': ['''Set whitelist to the given files. Clear filter if no files are given'''],
-    'show-cache': ['''Show the local cache tree from drive files'''],
-    'show-mirror': ['''Show the local mirror tree from drive files'''],
-    'show-filter': ['''Show status from filter, either blacklist or whitelist'''],
-    'sync-cache': ['''Load the whole file tree to the local cache'''],
-    'sync-mirror': ['''Load the whole file tree to the local mirror'''],
-    'help': ['''Show help menu''']
+    'add-blacklist': '''Adds one or more files to the blacklist and enables blacklist if off.
+                      If no files are given it toggles blacklist enabled''',
+    'add-whitelist': '''Adds one or more files to the whitelist and enables whitelist if off.
+                      If no files are given it toggles whitelist enabled''',
+    'clear-cache': '''Clear the local cache from drive files''',
+    'clear-mirror': '''Clear the local mirror from drive files''',
+    'remove-blacklist': '''Removes the given files from blacklist''',
+    'remove-whitelist': '''Removes the given files from whitelist''',
+    'set-blacklist': '''Set blacklist to the given files. Clear filter if no files are given''',
+    'set-whitelist': '''Set whitelist to the given files. Clear filter if no files are given''',
+    'show-cache': '''Show the local cache tree from drive files''',
+    'show-mirror': '''Show the local mirror tree from drive files''',
+    'show-filter': '''Show status from filter, either blacklist or whitelist''',
+    'sync-cache': '''Load the whole file tree to the local cache''',
+    'sync-mirror': '''Load the whole file tree to the local mirror''',
+    'help': '''Show help menu'''
 }
+
+#This will be deleted later, it's only some command ideas that are being
+#moved to HELPS
 COMMANDS = \
 {
     'operations':
     {
-        '-d, --download': {'help': '''Download a folder or file from drive'''},
         '-a, --file_status': {'help': '''Shows file status'''},
-        '-m, --move': {'help': '''Move a folder in drive'''},
         '-O, --open_in_drive': {'help':
                                 '''Opens a browser with the selected file or folder,
                                 root if nothing specified'''},
     },
     'sync':
     {
-        '-b, --blacklist': {'help':
-                            '''Select specific files or folders to not sync
-                            (can't be enabled at the same time as whitelist)'''},
         '-F, --force_sync': {'help':
                              '''Forces a sync before the timing, when the command is executed,
                              the timer resets to the settings.yaml timing'''},
-        '--get_sync_progress': {'help': '''Display the sync status'''},
-        '-p, --pause_sync': {'help': '''Pause drive sync'''},
-        '-e, --resume_sync': {'help': '''Resume drive sync'''},
         '-d, --set_sync_delay': {'help': '''If drive sync will start on OS startup'''},
-        '-s, start': {'help':
-                      '''Start sync the specified file, if None, the current file is synced'''},
-        '-S, --stop': {'help': '''Stop sync'''},
-        '-w, --whitelist': {'help':
-                            '''Select specific files or folders to sync
-                            (can't be enabled at the same time as blacklist)'''}
     },
     'configurations':
     {
         '-A, --set_autostart': {'help': '''Set if sync will start on OS startup'''},
-        '-h, --help': {'help': '''Shows the help menu'''}
     }
 }
 
