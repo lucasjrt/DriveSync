@@ -47,6 +47,9 @@ class DriveTree:
             return self.folders_hash[fileId]
         return None
 
+    def get_file_count(self):
+        return (len(self.files_hash) + len(self.folders_hash))
+
     def get_closest_nodes_from_path(self, path):
         '''Returns a list of all the nodes that are close to the path,
         of the local existing tree. It's a list because it's possible
@@ -140,7 +143,7 @@ class DriveTree:
         # just to keep local query to not request files every run
         # if not os.path.exists('folders.dat'):
         #     query = 'trashed = false and mimeType = "%s"' % TYPES['folder']
-        #     fields = 'nextPageToken, files(name, id, parents, mimeType)'
+        #     fields = 'nextPageToken, files(name, id, parents, mimeType, md5Checksum)'
         #     folders_metadata = []
         #     pageToken = None
         #     while True:
@@ -164,7 +167,7 @@ class DriveTree:
         folders_metadata = []
         pageToken = None
         while True:
-            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            fields = 'nextPageToken, files(name, id, parents, mimeType, md5Checksum)'
             result = self.service.files().list(q=query,\
                                                fields=fields,\
                                                pageToken=pageToken,\
@@ -275,7 +278,7 @@ class DriveTree:
             else:
                 print('no folders found')
                 return()
-            fields = 'nextPageToken, files(name, id, parents, mimeType)'
+            fields = 'nextPageToken, files(name, id, parents, mimeType, md5Checksum)'
             pageTokens = [None] * len(parents_query)
             files_metadata = []
             while True:
@@ -299,7 +302,7 @@ class DriveTree:
                     if filter_enabled:
                         continue
                     parent = self.root
-                DriveFile(parent, metadata)
+                self.files_hash[metadata['id']] = DriveFile(parent, metadata)
 
     def load_from_file(self, file_path=None):
         '''Loads the tree from disk'''

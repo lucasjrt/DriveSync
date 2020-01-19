@@ -11,6 +11,10 @@ class DriveFile:
         self.name = file_struct['name']
         self.children = []
         self.mime = file_struct['mimeType']
+        if 'md5Checksum' in file_struct:
+            self.md5 = file_struct['md5Checksum']
+        else:
+            self.md5 = None
         self.sequence_number = None # this will treat the multiple files with the same name problem
         if parent:
             self.level = parent.get_level() + 1
@@ -103,6 +107,9 @@ class DriveFile:
 
     def get_level(self):
         return self.level
+
+    def get_md5(self):
+        return self.md5
 
     def get_mime(self):
         return self.mime

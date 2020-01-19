@@ -2,7 +2,7 @@ import os
 
 from defines import DEFAULT_DOWNLOAD_CACHE, DEFAULT_DOWNLOAD_PATH, TREE_CACHE
 from mime_names import TYPES
-from utils import error, rfc3339_to_human, warn
+from utils import bytes_to_human, error, rfc3339_to_human, warn
 
 from drive_tree import DriveTree
 from drive_file import DriveFile
@@ -166,8 +166,16 @@ class ActionManager:
         children = list(nodes)
         while index == 'd':
             for i, node in enumerate(nodes):
-                print('\n{}) {}'.format(str(i + 1), node.get_path()))
-                self.drive_tree.print_folder(node, depth=depth)
+                if node.get_mime() == TYPES['folder']:
+                    print('\n{}) {}'.format(str(i + 1), node.get_path()))    
+                    self.drive_tree.print_folder(node, depth=depth)
+                else:
+                    infos = self.service.files().get(fileId=node.get_id(),
+                                                    fields='size, modifiedTime').execute()
+                    print('\n{}) {}\tSize: {}\t Last modified: {}'.format(str(i + 1), 
+                                                      node.get_path(), 
+                                                      bytes_to_human(infos['size']),
+                                                      rfc3339_to_human(infos['modifiedTime'])))
             index = input('\nWhich of them is your target? ([1..%d]/d) ' % len(nodes))
             if index == 'd':
                 for i in range(depth):
